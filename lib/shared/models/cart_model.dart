@@ -1,0 +1,112 @@
+import 'package:equatable/equatable.dart';
+
+class CartItemModel extends Equatable {
+  final String id;
+  final String productId;
+  final String name;
+  final String image;
+  final double price;
+  final int quantity;
+  final int stock;
+
+  const CartItemModel({
+    required this.id,
+    required this.productId,
+    required this.name,
+    required this.image,
+    required this.price,
+    required this.quantity,
+    required this.stock,
+  });
+
+  factory CartItemModel.fromJson(Map<String, dynamic> json) {
+    return CartItemModel(
+      id: json['_id'] ?? json['id'] ?? '',
+      productId: json['productId'] ?? json['product'] ?? '',
+      name: json['name'] ?? '',
+      image: json['image'] ?? '',
+      price: (json['price'] ?? 0).toDouble(),
+      quantity: json['quantity'] ?? 1,
+      stock: json['stock'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'productId': productId,
+      'name': name,
+      'image': image,
+      'price': price,
+      'quantity': quantity,
+      'stock': stock,
+    };
+  }
+
+  // Helper to create a copy of the item with a new quantity (useful for optimistic UI updates)
+  CartItemModel copyWith({
+    String? id,
+    String? productId,
+    String? name,
+    String? image,
+    double? price,
+    int? quantity,
+    int? stock,
+  }) {
+    return CartItemModel(
+      id: id ?? this.id,
+      productId: productId ?? this.productId,
+      name: name ?? this.name,
+      image: image ?? this.image,
+      price: price ?? this.price,
+      quantity: quantity ?? this.quantity,
+      stock: stock ?? this.stock,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, productId, name, image, price, quantity, stock];
+}
+
+class CartModel extends Equatable {
+  final List<CartItemModel> items;
+
+  const CartModel({
+    required this.items,
+  });
+
+  // Computed Getters
+  int get totalItems => items.fold(0, (sum, item) => sum + item.quantity);
+
+  double get subtotal => items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+
+  bool get isEmpty => items.isEmpty;
+
+  factory CartModel.fromJson(Map<String, dynamic> json) {
+    return CartModel(
+      items: json['items'] != null
+          ? List<CartItemModel>.from(
+        (json['items'] as List).map((x) => CartItemModel.fromJson(x)),
+      )
+          : [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'items': items.map((x) => x.toJson()).toList(),
+    };
+  }
+
+  // Helper to copy the cart with updated items
+  CartModel copyWith({
+    List<CartItemModel>? items,
+  }) {
+    return CartModel(
+      items: items ?? this.items,
+    );
+  }
+
+  @override
+  List<Object?> get props => [items];
+}

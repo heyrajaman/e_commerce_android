@@ -1,45 +1,107 @@
-# Miscellaneous
-*.class
+# =========================
+# OS / Misc
+# =========================
+.DS_Store
 *.log
+*.class
 *.pyc
 *.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
+*~
 .history
 .svn/
+.atom/
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# =========================
+# IDEs / Editors
+# =========================
+.idea/
 *.iml
 *.ipr
 *.iws
-.idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+.vscode/
+.project
+.settings/
+.classpath
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# =========================
+# Flutter / Dart
+# =========================
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
-.pub-cache/
+.packages
 .pub/
-/build/
-/coverage/
+.pub-cache/
+build/
+coverage/
 
-# Symbolication related
+# Docs
+**/doc/api/
+
+# =========================
+# Android
+# =========================
+android/local.properties
+android/key.properties
+
+android/app/debug
+android/app/profile
+android/app/release
+
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# Firebase / config
+android/app/src/main/res/values/google-services.json
+
+# =========================
+# iOS / macOS
+# =========================
+ios/.generated/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+ios/.pbpkg/
+
+DerivedData/
+
+**/ios/Flutter/ephemeral/
+**/ios/Pods/
+**/ios/.symlinks/
+
+*.mode1v3
+*.mode2v3
+*.apple_arch
+*.apple_keys
+
+# =========================
+# Web
+# =========================
+build/web/
+
+# =========================
+# Symbol / Obfuscation
+# =========================
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# =========================
+# Flutter iOS build cache
+# =========================
+**/ios/Flutter/.last_build_id
+
+# =========================
+# Sensitive files
+# =========================
+.env*
+!.env.example
