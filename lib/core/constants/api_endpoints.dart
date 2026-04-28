@@ -29,6 +29,7 @@ class ApiEndpoints {
   static const String adminLogin = '/api/admin/login';
   static const String adminDashboardStats = '/api/admin/dashboard/stats';
   static const String adminVendors = '/api/admin/vendors';
+  static const String deliveryLogin = '/api/delivery/login';
   static String approveVendor(String id) => '/api/admin/vendors/$id/approve';
   static String rejectVendor(String id) => '/api/admin/vendors/$id/reject';
 
