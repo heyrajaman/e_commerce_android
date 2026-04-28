@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -15,6 +16,9 @@ class CustomTextField extends StatefulWidget {
   final IconData? prefixIcon;
   final void Function(String?)? onChanged;
 
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
+
   const CustomTextField({
     super.key,
     required this.name,
@@ -26,6 +30,8 @@ class CustomTextField extends StatefulWidget {
     this.isPassword = false,
     this.prefixIcon,
     this.onChanged,
+    this.maxLength,
+    this.inputFormatters,
   });
 
   @override
@@ -43,10 +49,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
         // Label above the input field
         Padding(
           padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
-          child: Text(
-            widget.label,
-            style: AppTextStyles.kLabelLarge,
-          ),
+          child: Text(widget.label, style: AppTextStyles.kLabelLarge),
         ),
 
         // The actual input field
@@ -57,6 +60,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
           keyboardType: widget.keyboardType,
           obscureText: widget.isPassword ? _obscureText : false,
           onChanged: widget.onChanged,
+          maxLength: widget.maxLength,
+          inputFormatters: widget.inputFormatters,
           style: AppTextStyles.kBodyMedium,
           // Our AppTheme's InputDecorationTheme already applies the Glassmorphism background,
           // the soft white borders, the purple focus ring, and the red error text!
@@ -67,16 +72,16 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 : null,
             suffixIcon: widget.isPassword
                 ? IconButton(
-              icon: Icon(
-                _obscureText ? Icons.visibility_off : Icons.visibility,
-                color: AppColors.kTextSecondary,
-              ),
-              onPressed: () {
-                setState(() {
-                  _obscureText = !_obscureText;
-                });
-              },
-            )
+                    icon: Icon(
+                      _obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: AppColors.kTextSecondary,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureText = !_obscureText;
+                      });
+                    },
+                  )
                 : null,
           ),
         ),

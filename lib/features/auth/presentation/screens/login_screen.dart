@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -32,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final values = _formKey.currentState!.value;
       context.read<AuthBloc>().add(
         AuthLoginRequested(
-          email: values['email'],
+          phone: values['phone'],
           password: values['password'],
         ),
       );
@@ -50,97 +51,115 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               // Logo & Title Header
               Column(
-                children: [
-                  const Icon(
-                    Icons.shopping_bag_outlined,
-                    size: 64,
-                    color: AppColors.kAccentIndigo,
+                    children: [
+                      const Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 64,
+                        color: AppColors.kAccentIndigo,
+                      ),
+                      const SizedBox(height: AppConstants.kSpaceMD),
+                      Text('Welcome Back', style: AppTextStyles.kHeading1),
+                      const SizedBox(height: AppConstants.kSpaceSM),
+                      Text(
+                        'Login to continue your shopping',
+                        style: AppTextStyles.kBodyMedium,
+                      ),
+                    ],
+                  )
+                  .animate()
+                  .fadeIn(duration: AppConstants.kAnimNormal)
+                  .slideY(
+                    begin: 0.2,
+                    end: 0,
+                    duration: AppConstants.kAnimNormal,
+                    curve: Curves.easeOut,
                   ),
-                  const SizedBox(height: AppConstants.kSpaceMD),
-                  Text(
-                    'Welcome Back',
-                    style: AppTextStyles.kHeading1,
-                  ),
-                  const SizedBox(height: AppConstants.kSpaceSM),
-                  Text(
-                    'Login to continue your shopping',
-                    style: AppTextStyles.kBodyMedium,
-                  ),
-                ],
-              ).animate().fadeIn(duration: AppConstants.kAnimNormal).slideY(
-                begin: 0.2,
-                end: 0,
-                duration: AppConstants.kAnimNormal,
-                curve: Curves.easeOut,
-              ),
 
               const SizedBox(height: AppConstants.kSpaceXL),
 
               // The Glass Form Container
               GlassContainer(
-                child: FormBuilder(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      CustomTextField(
-                        name: 'email',
-                        label: 'Email Address',
-                        hint: 'Enter your email',
-                        prefixIcon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: FormBuilderValidators.compose([
-                          FormBuilderValidators.required(errorText: 'Email is required'),
-                          FormBuilderValidators.email(errorText: 'Enter a valid email'),
-                        ]),
-                      ),
-                      const SizedBox(height: AppConstants.kSpaceLG),
+                    child: FormBuilder(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          CustomTextField(
+                            name: 'phone',
+                            label: 'Phone Number',
+                            hint: 'Enter your registered phone number',
+                            prefixIcon: Icons.phone_outlined,
+                            keyboardType: TextInputType.phone,
+                            maxLength: 10,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            validator: FormBuilderValidators.compose([
+                              FormBuilderValidators.required(
+                                errorText: 'Phone number is required',
+                              ),
+                              FormBuilderValidators.match(
+                                RegExp(r'^\d{10}$'),
+                                errorText: 'Must be exactly 10 digits',
+                              ),
+                            ]),
+                          ),
+                          const SizedBox(height: AppConstants.kSpaceLG),
 
-                      CustomTextField(
-                        name: 'password',
-                        label: 'Password',
-                        hint: 'Enter your password',
-                        prefixIcon: Icons.lock_outline,
-                        isPassword: true,
-                        validator: FormBuilderValidators.compose([
-                          FormBuilderValidators.required(errorText: 'Password is required'),
-                          FormBuilderValidators.minLength(6, errorText: 'Minimum 6 characters'),
-                        ]),
-                      ),
-                      const SizedBox(height: AppConstants.kSpaceXL),
+                          CustomTextField(
+                            name: 'password',
+                            label: 'Password',
+                            hint: 'Enter your password',
+                            prefixIcon: Icons.lock_outline,
+                            isPassword: true,
+                            maxLength: 16,
+                            validator: FormBuilderValidators.compose([
+                              FormBuilderValidators.required(
+                                errorText: 'Password is required',
+                              ),
+                              FormBuilderValidators.minLength(
+                                6,
+                                errorText: 'Minimum 6 characters',
+                              ),
+                            ]),
+                          ),
+                          const SizedBox(height: AppConstants.kSpaceXL),
 
-                      // BlocConsumer listens to AuthBloc to show errors or navigate,
-                      // and builds the UI to show the loading spinner when needed.
-                      BlocConsumer<AuthBloc, AuthState>(
-                        listener: (context, state) {
-                          if (state is AuthAuthenticated) {
-                            context.go('/home');
-                          } else if (state is AuthError) {
-                            Fluttertoast.showToast(
-                              msg: state.message,
-                              backgroundColor: AppColors.kError,
-                              textColor: Colors.white,
-                              gravity: ToastGravity.BOTTOM,
-                            );
-                          }
-                        },
-                        builder: (context, state) {
-                          return PrimaryButton(
-                            label: 'LOGIN',
-                            icon: Icons.login,
-                            isLoading: state is AuthLoading,
-                            onPressed: _onLogin,
-                          );
-                        },
+                          // BlocConsumer listens to AuthBloc to show errors or navigate,
+                          // and builds the UI to show the loading spinner when needed.
+                          BlocConsumer<AuthBloc, AuthState>(
+                            listener: (context, state) {
+                              if (state is AuthAuthenticated) {
+                                context.go('/home');
+                              } else if (state is AuthError) {
+                                Fluttertoast.showToast(
+                                  msg: state.message,
+                                  backgroundColor: AppColors.kError,
+                                  textColor: Colors.white,
+                                  gravity: ToastGravity.BOTTOM,
+                                );
+                              }
+                            },
+                            builder: (context, state) {
+                              return PrimaryButton(
+                                label: 'LOGIN',
+                                icon: Icons.login,
+                                isLoading: state is AuthLoading,
+                                onPressed: _onLogin,
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  )
+                  .animate()
+                  .fadeIn(delay: const Duration(milliseconds: 200))
+                  .slideY(
+                    begin: 0.1,
+                    end: 0,
+                    duration: AppConstants.kAnimNormal,
+                    curve: Curves.easeOut,
                   ),
-                ),
-              ).animate().fadeIn(delay: const Duration(milliseconds: 200)).slideY(
-                begin: 0.1,
-                end: 0,
-                duration: AppConstants.kAnimNormal,
-                curve: Curves.easeOut,
-              ),
 
               const SizedBox(height: AppConstants.kSpaceLG),
 

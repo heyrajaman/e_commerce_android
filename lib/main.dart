@@ -11,15 +11,15 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_state.dart'; // Added for the listener
-import 'features/shop/data/repositories/product_repository.dart';
-import 'features/shop/presentation/bloc/product_bloc.dart';
 import 'features/cart/data/repositories/cart_repository.dart'; // Added for Cart
-import 'features/cart/presentation/bloc/cart_bloc.dart';       // Added for Cart
+import 'features/cart/presentation/bloc/cart_bloc.dart'; // Added for Cart
 import 'features/cart/presentation/bloc/cart_event.dart';
 import 'features/orders/data/repositories/order_repository.dart';
 import 'features/orders/presentation/bloc/order_bloc.dart';
 import 'features/profile/data/repositories/profile_repository.dart';
-import 'features/profile/presentation/bloc/profile_bloc.dart';// Added for Cart
+import 'features/profile/presentation/bloc/profile_bloc.dart'; // Added for Cart
+import 'features/shop/data/repositories/product_repository.dart';
+import 'features/shop/presentation/bloc/product_bloc.dart';
 import 'shared/services/storage_service.dart';
 
 final sl = GetIt.instance;
@@ -34,52 +34,69 @@ Future<void> initDependencies() async {
   // 1. Core Services
   final sharedPrefs = await SharedPreferences.getInstance();
   const secureStorage = FlutterSecureStorage();
-  sl.registerLazySingleton<StorageService>(() => StorageService(secureStorage, sharedPrefs));
+  sl.registerLazySingleton<StorageService>(
+    () => StorageService(secureStorage, sharedPrefs),
+  );
+
+  final apiClient = ApiClient();
+  await apiClient.init();
   sl.registerLazySingleton<ApiClient>(() => ApiClient());
 
   // 2. Features - Auth
-  sl.registerLazySingleton<AuthRepository>(() => AuthRepository(sl<ApiClient>()));
-  sl.registerLazySingleton<AuthBloc>(() => AuthBloc(
-    authRepository: sl<AuthRepository>(),
-    storageService: sl<StorageService>(),
-  ));
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepository(sl<ApiClient>()),
+  );
+  sl.registerLazySingleton<AuthBloc>(
+    () => AuthBloc(
+      authRepository: sl<AuthRepository>(),
+      storageService: sl<StorageService>(),
+    ),
+  );
 
   // 2. Features - Shop
-  sl.registerLazySingleton<ProductRepository>(() => ProductRepository(sl<ApiClient>()));
-  sl.registerLazySingleton<ProductBloc>(() => ProductBloc(
-    productRepository: sl<ProductRepository>(),
-  ));
+  sl.registerLazySingleton<ProductRepository>(
+    () => ProductRepository(sl<ApiClient>()),
+  );
+  sl.registerLazySingleton<ProductBloc>(
+    () => ProductBloc(productRepository: sl<ProductRepository>()),
+  );
 
   // 2. Features - Cart
-  sl.registerLazySingleton<CartRepository>(() => CartRepository(
-    apiClient: sl<ApiClient>(),
-    storageService: sl<StorageService>(),
-  ));
-  sl.registerLazySingleton<CartBloc>(() => CartBloc(
-    cartRepository: sl<CartRepository>(),
-  ));
+  sl.registerLazySingleton<CartRepository>(
+    () => CartRepository(
+      apiClient: sl<ApiClient>(),
+      storageService: sl<StorageService>(),
+    ),
+  );
+  sl.registerLazySingleton<CartBloc>(
+    () => CartBloc(cartRepository: sl<CartRepository>()),
+  );
 
   // 2. Features - Orders (NEW)
-  sl.registerLazySingleton<OrderRepository>(() => OrderRepository(
-    apiClient: sl<ApiClient>(),
-  ));
-  sl.registerLazySingleton<OrderBloc>(() => OrderBloc(
-    orderRepository: sl<OrderRepository>(),
-  ));
+  sl.registerLazySingleton<OrderRepository>(
+    () => OrderRepository(apiClient: sl<ApiClient>()),
+  );
+  sl.registerLazySingleton<OrderBloc>(
+    () => OrderBloc(orderRepository: sl<OrderRepository>()),
+  );
 
   // 2. Features - Profile (NEW)
-  sl.registerLazySingleton<ProfileRepository>(() => ProfileRepository(
-    apiClient: sl<ApiClient>(),
-  ));
-  sl.registerLazySingleton<ProfileBloc>(() => ProfileBloc(
-    profileRepository: sl<ProfileRepository>(),
-    authBloc: sl<AuthBloc>(),
-  ));
+  sl.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepository(apiClient: sl<ApiClient>()),
+  );
+  sl.registerLazySingleton<ProfileBloc>(
+    () => ProfileBloc(
+      profileRepository: sl<ProfileRepository>(),
+      authBloc: sl<AuthBloc>(),
+    ),
+  );
 
   // 3. Router
   // We create a singleton instance of AuthBloc to pass to the router for redirect logic
   final authBlocForRouter = sl<AuthBloc>();
-  sl.registerLazySingleton<GoRouter>(() => AppRouter.createRouter(authBlocForRouter));
+  sl.registerLazySingleton<GoRouter>(
+    () => AppRouter.createRouter(authBlocForRouter),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -93,12 +110,8 @@ class MyApp extends StatelessWidget {
           // Fetch the bloc instance from GetIt
           create: (_) => sl<AuthBloc>(),
         ),
-        BlocProvider<ProductBloc>(
-          create: (_) => sl<ProductBloc>(),
-        ),
-        BlocProvider<CartBloc>(
-          create: (_) => sl<CartBloc>(),
-        ),
+        BlocProvider<ProductBloc>(create: (_) => sl<ProductBloc>()),
+        BlocProvider<CartBloc>(create: (_) => sl<CartBloc>()),
         BlocProvider<OrderBloc>(create: (_) => sl<OrderBloc>()),
         BlocProvider<ProfileBloc>(create: (_) => sl<ProfileBloc>()),
       ],
@@ -109,7 +122,7 @@ class MyApp extends StatelessWidget {
           if (state is AuthAuthenticated) {
             context.read<CartBloc>().add(const CartFetchRequested());
           } else if (state is AuthUnauthenticated) {
-            context.read<CartBloc>().add(const CartCleared());
+            context.read<CartBloc>().add(const CartResetLocal());
           }
         },
         child: MaterialApp.router(

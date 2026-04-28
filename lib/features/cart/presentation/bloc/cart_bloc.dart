@@ -18,6 +18,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartItemQuantityUpdated>(_onCartItemQuantityUpdated);
     on<CartItemRemoved>(_onCartItemRemoved);
     on<CartCleared>(_onCartCleared);
+    on<CartResetLocal>(_onCartResetLocal);
   }
 
   // Helper to extract the current cart safely from the state
@@ -155,5 +156,12 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         textColor: Colors.white,
       );
     }
+  }
+
+  void _onCartResetLocal(
+      CartResetLocal event,
+      Emitter<CartState> emit,
+      ) {
+    emit(const CartLoaded(CartModel(items: [])));
   }
 }

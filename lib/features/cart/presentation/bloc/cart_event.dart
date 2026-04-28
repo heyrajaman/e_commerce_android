@@ -49,3 +49,10 @@ class CartItemRemoved extends CartEvent {
 class CartCleared extends CartEvent {
   const CartCleared();
 }
+
+class CartResetLocal extends CartEvent {
+  const CartResetLocal();
+
+  @override
+  List<Object> get props => [];
+}

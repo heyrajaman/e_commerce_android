@@ -12,9 +12,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({
     required AuthRepository authRepository,
     required StorageService storageService,
-  })  : _authRepository = authRepository,
-        _storageService = storageService,
-        super(const AuthInitial()) {
+  }) : _authRepository = authRepository,
+       _storageService = storageService,
+       super(const AuthInitial()) {
     on<AuthCheckStatusRequested>(_onCheckStatusRequested);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthRegisterRequested>(_onRegisterRequested);
@@ -22,9 +22,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onCheckStatusRequested(
-      AuthCheckStatusRequested event,
-      Emitter<AuthState> emit,
-      ) async {
+    AuthCheckStatusRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(const AuthLoading());
     try {
       final token = await _storageService.getToken();
@@ -44,16 +44,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLoginRequested(
-      AuthLoginRequested event,
-      Emitter<AuthState> emit,
-      ) async {
+    AuthLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(const AuthLoading());
     try {
-      final user = await _authRepository.login(event.email, event.password);
-
-      // TODO: If your backend returns a JWT in the login response body (instead of a cookie),
-      // ensure the token is extracted in the repository and saved here like:
-      // await _storageService.saveToken(token);
+      final user = await _authRepository.login(event.phone, event.password);
 
       emit(AuthAuthenticated(user));
     } catch (e) {
@@ -62,9 +58,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onRegisterRequested(
-      AuthRegisterRequested event,
-      Emitter<AuthState> emit,
-      ) async {
+    AuthRegisterRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(const AuthLoading());
     try {
       final user = await _authRepository.register(
@@ -81,9 +77,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogoutRequested(
-      AuthLogoutRequested event,
-      Emitter<AuthState> emit,
-      ) async {
+    AuthLogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(const AuthLoading());
     try {
       await _authRepository.logout();

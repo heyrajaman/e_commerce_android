@@ -10,27 +10,31 @@ class AuthRepository {
 
   AuthRepository(this._apiClient);
 
-  Future<UserModel> login(String email, String password) async {
+  Future<UserModel> login(String phone, String password) async {
     try {
       final response = await _apiClient.dio.post(
         ApiEndpoints.login,
-        data: {
-          'email': email,
-          'password': password,
-        },
+        data: {'phone': phone, 'password': password},
       );
 
       // Depending on your backend response structure, it might be inside a 'user' key
       final userData = response.data['user'] ?? response.data;
       return UserModel.fromJson(userData);
     } on DioException catch (e) {
-      throw e.error is Exception ? e.error as Exception : ServerException(e.message ?? 'Unknown error occurred');
+      throw e.error is Exception
+          ? e.error as Exception
+          : ServerException(e.message ?? 'Unknown error occurred');
     } catch (e) {
       throw ServerException(e.toString());
     }
   }
 
-  Future<UserModel> register(String name, String email, String password, String phone) async {
+  Future<UserModel> register(
+    String name,
+    String email,
+    String password,
+    String phone,
+  ) async {
     try {
       final response = await _apiClient.dio.post(
         ApiEndpoints.register,
@@ -45,7 +49,9 @@ class AuthRepository {
       final userData = response.data['user'] ?? response.data;
       return UserModel.fromJson(userData);
     } on DioException catch (e) {
-      throw e.error is Exception ? e.error as Exception : ServerException(e.message ?? 'Unknown error occurred');
+      throw e.error is Exception
+          ? e.error as Exception
+          : ServerException(e.message ?? 'Unknown error occurred');
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -55,7 +61,9 @@ class AuthRepository {
     try {
       await _apiClient.dio.post(ApiEndpoints.logout);
     } on DioException catch (e) {
-      throw e.error is Exception ? e.error as Exception : ServerException(e.message ?? 'Unknown error occurred');
+      throw e.error is Exception
+          ? e.error as Exception
+          : ServerException(e.message ?? 'Unknown error occurred');
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -68,7 +76,9 @@ class AuthRepository {
       final userData = response.data['user'] ?? response.data;
       return UserModel.fromJson(userData);
     } on DioException catch (e) {
-      throw e.error is Exception ? e.error as Exception : ServerException(e.message ?? 'Unknown error occurred');
+      throw e.error is Exception
+          ? e.error as Exception
+          : ServerException(e.message ?? 'Unknown error occurred');
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -78,13 +88,12 @@ class AuthRepository {
     try {
       await _apiClient.dio.post(
         ApiEndpoints.changePassword,
-        data: {
-          'oldPassword': oldPassword,
-          'newPassword': newPassword,
-        },
+        data: {'oldPassword': oldPassword, 'newPassword': newPassword},
       );
     } on DioException catch (e) {
-      throw e.error is Exception ? e.error as Exception : ServerException(e.message ?? 'Unknown error occurred');
+      throw e.error is Exception
+          ? e.error as Exception
+          : ServerException(e.message ?? 'Unknown error occurred');
     } catch (e) {
       throw ServerException(e.toString());
     }

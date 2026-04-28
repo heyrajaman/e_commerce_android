@@ -14,16 +14,13 @@ class AuthCheckStatusRequested extends AuthEvent {
 
 /// Dispatched when the user submits the login form
 class AuthLoginRequested extends AuthEvent {
-  final String email;
+  final String phone;
   final String password;
 
-  const AuthLoginRequested({
-    required this.email,
-    required this.password,
-  });
+  const AuthLoginRequested({required this.phone, required this.password});
 
   @override
-  List<Object> get props => [email, password];
+  List<Object> get props => [phone, password];
 }
 
 /// Dispatched when the user submits the registration form
