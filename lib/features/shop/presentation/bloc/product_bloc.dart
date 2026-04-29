@@ -13,9 +13,11 @@ EventTransformer<Event> debounceTransformer<Event>(Duration duration) {
 class ProductBloc extends Bloc<ProductEvent, ProductState> {
   final ProductRepository _productRepository;
 
+  ProductsLoaded? _lastLoadedList;
+
   ProductBloc({required ProductRepository productRepository})
-      : _productRepository = productRepository,
-        super(const ProductInitial()) {
+    : _productRepository = productRepository,
+      super(const ProductInitial()) {
     on<ProductsFetchRequested>(_onProductsFetchRequested);
     on<ProductsSearchChanged>(
       _onProductsSearchChanged,
@@ -24,14 +26,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     on<ProductsCategorySelected>(_onProductsCategorySelected);
     on<ProductDetailFetchRequested>(_onProductDetailFetchRequested);
     on<ProductsRefreshRequested>(_onProductsRefreshRequested);
+
+    on<RestoreListRequested>(_onRestoreListRequested);
   }
 
   Future<void> _onProductsFetchRequested(
-      ProductsFetchRequested event,
-      Emitter<ProductState> emit,
-      ) async {
-    // If it's the first page, show the initial loading state.
-    // Otherwise, we keep the current ProductsLoaded state visible while fetching more.
+    ProductsFetchRequested event,
+    Emitter<ProductState> emit,
+  ) async {
     if (event.page == 1) {
       emit(const ProductsLoading());
     }
@@ -43,72 +45,71 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         page: event.page,
       );
 
-      // If we are appending to an existing list (pagination)
+      ProductsLoaded newState;
+
       if (state is ProductsLoaded && event.page > 1) {
         final currentState = state as ProductsLoaded;
-        final combinedProducts = List.of(currentState.products)..addAll(newProducts);
+        final combinedProducts = List.of(currentState.products)
+          ..addAll(newProducts);
 
-        emit(ProductsLoaded(
+        newState = ProductsLoaded(
           combinedProducts,
           activeCategory: event.category,
           searchQuery: event.search,
-          hasMore: newProducts.isNotEmpty, // If backend returned empty, we reached the end
-        ));
+          hasMore: newProducts.isNotEmpty,
+        );
       } else {
-        // First page load
-        emit(ProductsLoaded(
+        newState = ProductsLoaded(
           newProducts,
           activeCategory: event.category,
           searchQuery: event.search,
           hasMore: newProducts.isNotEmpty,
-        ));
+        );
       }
+
+      _lastLoadedList = newState;
+      emit(newState);
     } catch (e) {
       emit(ProductError(e.toString()));
     }
   }
 
   void _onProductsSearchChanged(
-      ProductsSearchChanged event,
-      Emitter<ProductState> emit,
-      ) {
-    // Determine current category if any
+    ProductsSearchChanged event,
+    Emitter<ProductState> emit,
+  ) {
     String? currentCategory;
-    if (state is ProductsLoaded) {
+    if (state is ProductsLoaded)
       currentCategory = (state as ProductsLoaded).activeCategory;
-    }
-
-    // Trigger a fresh fetch with the new search query
-    add(ProductsFetchRequested(
-      search: event.query,
-      category: currentCategory,
-      page: 1,
-    ));
+    add(
+      ProductsFetchRequested(
+        search: event.query,
+        category: currentCategory,
+        page: 1,
+      ),
+    );
   }
 
   void _onProductsCategorySelected(
-      ProductsCategorySelected event,
-      Emitter<ProductState> emit,
-      ) {
-    // Determine current search query if any
+    ProductsCategorySelected event,
+    Emitter<ProductState> emit,
+  ) {
     String? currentSearch;
-    if (state is ProductsLoaded) {
+    if (state is ProductsLoaded)
       currentSearch = (state as ProductsLoaded).searchQuery;
-    }
-
-    // Trigger a fresh fetch with the new category
-    add(ProductsFetchRequested(
-      category: event.category,
-      search: currentSearch,
-      page: 1,
-    ));
+    add(
+      ProductsFetchRequested(
+        category: event.category,
+        search: currentSearch,
+        page: 1,
+      ),
+    );
   }
 
   Future<void> _onProductDetailFetchRequested(
-      ProductDetailFetchRequested event,
-      Emitter<ProductState> emit,
-      ) async {
-    // We emit a separate loading state specifically for the detail view
+    ProductDetailFetchRequested event,
+    Emitter<ProductState> emit,
+  ) async {
     emit(const ProductDetailLoading());
     try {
       final product = await _productRepository.getProductById(event.productId);
@@ -119,23 +120,31 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
   }
 
   void _onProductsRefreshRequested(
-      ProductsRefreshRequested event,
-      Emitter<ProductState> emit,
-      ) {
+    ProductsRefreshRequested event,
+    Emitter<ProductState> emit,
+  ) {
     String? currentCategory;
     String? currentSearch;
-
     if (state is ProductsLoaded) {
       final currentState = state as ProductsLoaded;
       currentCategory = currentState.activeCategory;
       currentSearch = currentState.searchQuery;
     }
+    add(
+      ProductsFetchRequested(
+        category: currentCategory,
+        search: currentSearch,
+        page: 1,
+      ),
+    );
+  }
 
-    // Force fetch page 1 with existing filters
-    add(ProductsFetchRequested(
-      category: currentCategory,
-      search: currentSearch,
-      page: 1,
-    ));
+  void _onRestoreListRequested(
+    RestoreListRequested event,
+    Emitter<ProductState> emit,
+  ) {
+    if (_lastLoadedList != null) {
+      emit(_lastLoadedList!);
+    }
   }
 }

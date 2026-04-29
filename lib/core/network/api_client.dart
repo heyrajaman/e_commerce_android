@@ -24,6 +24,7 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-App-Client': 'mobile',
         },
       ),
     );
@@ -61,7 +62,7 @@ class ApiClient {
   Future<void> fetchCsrfToken() async {
     try {
       // This matches your backend route: app.get("/api/auth/csrf-token", ...)
-      final response = await dio.get('/auth/csrf-token');
+      final response = await dio.get('/api/auth/csrf-token');
       if (response.data != null && response.data['csrfToken'] != null) {
         _csrfToken = response.data['csrfToken'];
       }

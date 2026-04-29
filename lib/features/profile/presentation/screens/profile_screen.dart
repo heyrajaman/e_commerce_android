@@ -69,31 +69,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         fallbackPhone = state.user.phone;
       }
 
-      context.read<ProfileBloc>().add(ProfileUpdateRequested(
-        name: name ?? fallbackName ?? '',
-        phone: phone ?? fallbackPhone ?? '',
-        imageFile: File(image.path),
-      ));
+      context.read<ProfileBloc>().add(
+        ProfileUpdateRequested(
+          name: name ?? fallbackName ?? '',
+          phone: phone ?? fallbackPhone ?? '',
+          imageFile: File(image.path),
+        ),
+      );
     }
   }
 
   void _saveProfile() {
     if (_profileFormKey.currentState?.saveAndValidate() ?? false) {
       final values = _profileFormKey.currentState!.value;
-      context.read<ProfileBloc>().add(ProfileUpdateRequested(
-        name: values['name'],
-        phone: values['phone'],
-      ));
+      context.read<ProfileBloc>().add(
+        ProfileUpdateRequested(name: values['name'], phone: values['phone']),
+      );
     }
   }
 
   void _changePassword() {
     if (_passwordFormKey.currentState?.saveAndValidate() ?? false) {
       final values = _passwordFormKey.currentState!.value;
-      context.read<ProfileBloc>().add(ProfilePasswordChangeRequested(
-        oldPassword: values['oldPassword'],
-        newPassword: values['newPassword'],
-      ));
+      context.read<ProfileBloc>().add(
+        ProfilePasswordChangeRequested(
+          oldPassword: values['oldPassword'],
+          newPassword: values['newPassword'],
+        ),
+      );
     }
   }
 
@@ -103,7 +106,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.kGlassWhite,
         title: const Text('Log Out'),
-        content: const Text('Are you sure you want to log out of your account?'),
+        content: const Text(
+          'Are you sure you want to log out of your account?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -114,7 +119,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.pop(ctx);
               context.read<AuthBloc>().add(const AuthLogoutRequested());
             },
-            child: Text('Log Out', style: AppTextStyles.kBodyMedium.copyWith(color: AppColors.kError)),
+            child: Text(
+              'Log Out',
+              style: AppTextStyles.kBodyMedium.copyWith(
+                color: AppColors.kError,
+              ),
+            ),
           ),
         ],
       ),
@@ -142,9 +152,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
           builder: (context, state) {
             if (state is ProfileInitial || state is ProfileLoading) {
-              return const Center(child: CircularProgressIndicator(color: AppColors.kAccentIndigo));
-            } else if (state is ProfileError && context.read<ProfileBloc>().state is! ProfileLoaded) {
-              return Center(child: Text(state.message, style: AppTextStyles.kBodyMedium.copyWith(color: AppColors.kError)));
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.kAccentIndigo,
+                ),
+              );
+            } else if (state is ProfileError &&
+                context.read<ProfileBloc>().state is! ProfileLoaded) {
+              return Center(
+                child: Text(
+                  state.message,
+                  style: AppTextStyles.kBodyMedium.copyWith(
+                    color: AppColors.kError,
+                  ),
+                ),
+              );
             }
 
             UserModel? user;
@@ -211,11 +233,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 60,
                 backgroundColor: AppColors.kAccentIndigo.withValues(alpha: 0.2),
-                backgroundImage: user.image != null && user.image!.isNotEmpty
-                    ? CachedNetworkImageProvider(user.image!)
+                backgroundImage:
+                    user.profilePic != null && user.profilePic!.isNotEmpty
+                    ? CachedNetworkImageProvider(user.profilePic!)
                     : null,
-                child: user.image == null || user.image!.isEmpty
-                    ? Text(initials, style: AppTextStyles.kHeading1.copyWith(color: AppColors.kAccentIndigo))
+                child: user.profilePic == null || user.profilePic!.isEmpty
+                    ? Text(
+                        initials,
+                        style: AppTextStyles.kHeading1.copyWith(
+                          color: AppColors.kAccentIndigo,
+                        ),
+                      )
                     : null,
               ),
               Positioned(
@@ -230,16 +258,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),
             ],
-          ).animate().scale(delay: const Duration(milliseconds: 100), curve: Curves.easeOutBack),
+          ).animate().scale(
+            delay: const Duration(milliseconds: 100),
+            curve: Curves.easeOutBack,
+          ),
 
           const SizedBox(height: AppConstants.kSpaceMD),
-          Text(user.name, style: AppTextStyles.kHeading2).animate().fadeIn(delay: const Duration(milliseconds: 200)),
-          Text(user.email, style: AppTextStyles.kBodyMedium.copyWith(color: AppColors.kTextSecondary)).animate().fadeIn(delay: const Duration(milliseconds: 300)),
+          Text(
+            user.name,
+            style: AppTextStyles.kHeading2,
+          ).animate().fadeIn(delay: const Duration(milliseconds: 200)),
+          Text(
+            user.email,
+            style: AppTextStyles.kBodyMedium.copyWith(
+              color: AppColors.kTextSecondary,
+            ),
+          ).animate().fadeIn(delay: const Duration(milliseconds: 300)),
         ],
       ),
     );
@@ -247,147 +290,167 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildEditProfileForm(UserModel user) {
     return GlassContainer(
-      padding: const EdgeInsets.all(AppConstants.kSpaceLG),
-      child: FormBuilder(
-        key: _profileFormKey,
-        initialValue: {
-          'name': user.name,
-          'phone': user.phone,
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Personal Information', style: AppTextStyles.kHeading3),
-            const SizedBox(height: AppConstants.kSpaceLG),
+          padding: const EdgeInsets.all(AppConstants.kSpaceLG),
+          child: FormBuilder(
+            key: _profileFormKey,
+            initialValue: {'name': user.name, 'phone': user.phone},
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Personal Information', style: AppTextStyles.kHeading3),
+                const SizedBox(height: AppConstants.kSpaceLG),
 
-            CustomTextField(
-              name: 'name',
-              label: 'Full Name',
-              validator: AppValidators.name(), // Upgraded to AppValidators
-            ),
-            const SizedBox(height: AppConstants.kSpaceMD),
+                CustomTextField(
+                  name: 'name',
+                  label: 'Full Name',
+                  validator: AppValidators.name(), // Upgraded to AppValidators
+                ),
+                const SizedBox(height: AppConstants.kSpaceMD),
 
-            CustomTextField(
-              name: 'phone',
-              label: 'Phone Number',
-              keyboardType: TextInputType.phone,
-              validator: AppValidators.phone(), // Upgraded to AppValidators
-            ),
-            const SizedBox(height: AppConstants.kSpaceLG),
+                CustomTextField(
+                  name: 'phone',
+                  label: 'Phone Number',
+                  keyboardType: TextInputType.phone,
+                  validator: AppValidators.phone(), // Upgraded to AppValidators
+                ),
+                const SizedBox(height: AppConstants.kSpaceLG),
 
-            PrimaryButton(
-              label: 'Save Changes',
-              onPressed: _saveProfile,
+                PrimaryButton(label: 'Save Changes', onPressed: _saveProfile),
+              ],
             ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: const Duration(milliseconds: 400)).slideY(begin: 0.1);
+          ),
+        )
+        .animate()
+        .fadeIn(delay: const Duration(milliseconds: 400))
+        .slideY(begin: 0.1);
   }
 
   Widget _buildChangePasswordSection() {
     return GlassContainer(
-      padding: const EdgeInsets.all(AppConstants.kSpaceLG),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () => setState(() => _isPasswordSectionExpanded = !_isPasswordSectionExpanded),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Change Password', style: AppTextStyles.kHeading3),
-                Icon(_isPasswordSectionExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.kTextPrimary),
-              ],
-            ),
-          ),
-
-          if (_isPasswordSectionExpanded) ...[
-            const SizedBox(height: AppConstants.kSpaceLG),
-            FormBuilder(
-              key: _passwordFormKey,
-              child: Column(
-                children: [
-                  CustomTextField(
-                    name: 'oldPassword',
-                    label: 'Current Password',
-                    isPassword: true,
-                    validator: FormBuilderValidators.required(errorText: 'Required'),
-                  ),
-                  const SizedBox(height: AppConstants.kSpaceMD),
-                  CustomTextField(
-                    name: 'newPassword',
-                    label: 'New Password',
-                    isPassword: true,
-                    validator: AppValidators.password(), // Upgraded to AppValidators
-                  ),
-                  const SizedBox(height: AppConstants.kSpaceMD),
-                  CustomTextField(
-                    name: 'confirmNewPassword',
-                    label: 'Confirm New Password',
-                    isPassword: true,
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Required';
-                      if (val != _passwordFormKey.currentState?.fields['newPassword']?.value) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppConstants.kSpaceLG),
-                  PrimaryButton(
-                    label: 'Update Password',
-                    backgroundColor: AppColors.kAccentPink,
-                    onPressed: _changePassword,
-                  ),
-                ],
+          padding: const EdgeInsets.all(AppConstants.kSpaceLG),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () => setState(
+                  () =>
+                      _isPasswordSectionExpanded = !_isPasswordSectionExpanded,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Change Password', style: AppTextStyles.kHeading3),
+                    Icon(
+                      _isPasswordSectionExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: AppColors.kTextPrimary,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ]
-        ],
-      ),
-    ).animate().fadeIn(delay: const Duration(milliseconds: 500)).slideY(begin: 0.1);
+
+              if (_isPasswordSectionExpanded) ...[
+                const SizedBox(height: AppConstants.kSpaceLG),
+                FormBuilder(
+                  key: _passwordFormKey,
+                  child: Column(
+                    children: [
+                      CustomTextField(
+                        name: 'oldPassword',
+                        label: 'Current Password',
+                        isPassword: true,
+                        validator: FormBuilderValidators.required(
+                          errorText: 'Required',
+                        ),
+                      ),
+                      const SizedBox(height: AppConstants.kSpaceMD),
+                      CustomTextField(
+                        name: 'newPassword',
+                        label: 'New Password',
+                        isPassword: true,
+                        validator:
+                            AppValidators.password(), // Upgraded to AppValidators
+                      ),
+                      const SizedBox(height: AppConstants.kSpaceMD),
+                      CustomTextField(
+                        name: 'confirmNewPassword',
+                        label: 'Confirm New Password',
+                        isPassword: true,
+                        validator: (val) {
+                          if (val == null || val.isEmpty) return 'Required';
+                          if (val !=
+                              _passwordFormKey
+                                  .currentState
+                                  ?.fields['newPassword']
+                                  ?.value) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppConstants.kSpaceLG),
+                      PrimaryButton(
+                        label: 'Update Password',
+                        backgroundColor: AppColors.kAccentPink,
+                        onPressed: _changePassword,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        )
+        .animate()
+        .fadeIn(delay: const Duration(milliseconds: 500))
+        .slideY(begin: 0.1);
   }
 
   Widget _buildMenuItems(BuildContext context) {
     return Column(
-      children: [
-        _buildMenuCard(
-          icon: Icons.receipt_long_outlined,
-          title: 'My Orders',
-          onTap: () => context.push('/orders'),
-        ),
-        const SizedBox(height: AppConstants.kSpaceMD),
-        _buildMenuCard(
-          icon: Icons.notifications_none_outlined,
-          title: 'Notifications',
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifications coming soon!')));
-          },
-        ),
-        const SizedBox(height: AppConstants.kSpaceMD),
-        _buildMenuCard(
-          icon: Icons.info_outline,
-          title: 'About App',
-          onTap: () {
-            showAboutDialog(
-              context: context,
-              applicationName: 'E-Commerce App',
-              applicationVersion: '1.0.0',
-              applicationIcon: const FlutterLogo(size: 40),
-            );
-          },
-        ),
-        const SizedBox(height: AppConstants.kSpaceMD),
-        _buildMenuCard(
-          icon: Icons.logout,
-          title: 'Log Out',
-          iconColor: AppColors.kError,
-          textColor: AppColors.kError,
-          onTap: _confirmLogout,
-        ),
-      ],
-    ).animate().fadeIn(delay: const Duration(milliseconds: 600)).slideY(begin: 0.1);
+          children: [
+            _buildMenuCard(
+              icon: Icons.receipt_long_outlined,
+              title: 'My Orders',
+              onTap: () => context.push('/orders'),
+            ),
+            const SizedBox(height: AppConstants.kSpaceMD),
+            _buildMenuCard(
+              icon: Icons.notifications_none_outlined,
+              title: 'Notifications',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Notifications coming soon!')),
+                );
+              },
+            ),
+            const SizedBox(height: AppConstants.kSpaceMD),
+            _buildMenuCard(
+              icon: Icons.info_outline,
+              title: 'About App',
+              onTap: () {
+                showAboutDialog(
+                  context: context,
+                  applicationName: 'E-Commerce App',
+                  applicationVersion: '1.0.0',
+                  applicationIcon: const FlutterLogo(size: 40),
+                );
+              },
+            ),
+            const SizedBox(height: AppConstants.kSpaceMD),
+            _buildMenuCard(
+              icon: Icons.logout,
+              title: 'Log Out',
+              iconColor: AppColors.kError,
+              textColor: AppColors.kError,
+              onTap: _confirmLogout,
+            ),
+          ],
+        )
+        .animate()
+        .fadeIn(delay: const Duration(milliseconds: 600))
+        .slideY(begin: 0.1);
   }
 
   Widget _buildMenuCard({
@@ -400,7 +463,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return GestureDetector(
       onTap: onTap,
       child: GlassContainer(
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.kSpaceLG, vertical: AppConstants.kSpaceMD),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.kSpaceLG,
+          vertical: AppConstants.kSpaceMD,
+        ),
         child: Row(
           children: [
             Container(
@@ -413,7 +479,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(width: AppConstants.kSpaceMD),
             Expanded(
-              child: Text(title, style: AppTextStyles.kLabelLarge.copyWith(color: textColor, fontWeight: FontWeight.bold)),
+              child: Text(
+                title,
+                style: AppTextStyles.kLabelLarge.copyWith(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             Icon(Icons.chevron_right, color: textColor.withValues(alpha: 0.5)),
           ],

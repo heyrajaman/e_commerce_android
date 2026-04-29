@@ -36,18 +36,20 @@ class ProductModel extends Equatable {
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
       // Handle both MongoDB '_id' and standard 'id'
-      id: json['_id'] ?? json['id'] ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
-      // Safely parse numbers to double
       price: (json['price'] ?? 0).toDouble(),
       discountPrice: json['discountPrice'] != null
-          ? (json['discountPrice']).toDouble()
+          ? (json['discountPrice'] as num).toDouble()
           : null,
       images: json['images'] != null ? List<String>.from(json['images']) : [],
-      category: json['category'] ?? '',
-      stock: json['stock'] ?? 0,
-      vendorId: json['vendorId'] ?? json['vendor'] ?? '',
+      category: json['Category'] != null
+          ? json['Category']['name'] ?? ''
+          : (json['category'] ?? ''),
+      stock: json['availableStock'] ?? json['stock'] ?? 0,
+      vendorId:
+          json['vendorId']?.toString() ?? json['vendor']?.toString() ?? '',
       rating: (json['rating'] ?? 0).toDouble(),
       reviewCount: json['reviewCount'] ?? json['numOfReviews'] ?? 0,
     );

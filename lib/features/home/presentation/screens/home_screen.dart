@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,7 +37,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController(viewportFraction: 0.9);
   Timer? _bannerTimer;
 
-  final List<String> _categories = ['All', 'Electronics', 'Clothing', 'Shoes', 'Accessories'];
+  final List<String> _categories = [
+    'All',
+    'Electronics',
+    'Clothing',
+    'Shoes',
+    'Accessories',
+  ];
 
   @override
   void initState() {
@@ -74,7 +81,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    final userName = authState is AuthAuthenticated ? authState.user.name : 'Guest';
+    final userName = authState is AuthAuthenticated
+        ? authState.user.name
+        : 'Guest';
 
     // Dynamically grab horizontal padding based on screen size
     final responsivePad = ResponsiveHelper.responsivePadding(context);
@@ -89,7 +98,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Badge(
               label: Text('3'),
               backgroundColor: AppColors.kAccentPink,
-              child: Icon(Icons.shopping_cart_outlined, size: 28, color: AppColors.kTextPrimary),
+              child: Icon(
+                Icons.shopping_cart_outlined,
+                size: 28,
+                color: AppColors.kTextPrimary,
+              ),
             ),
             onPressed: () => context.push('/cart'),
           ),
@@ -107,44 +120,53 @@ class _HomeScreenState extends State<HomeScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.only(
-                      left: responsivePad.left,
-                      right: responsivePad.right,
-                      top: AppConstants.kSpaceLG,
-                      bottom: AppConstants.kSpaceMD
+                    left: responsivePad.left,
+                    right: responsivePad.right,
+                    top: AppConstants.kSpaceLG,
+                    bottom: AppConstants.kSpaceMD,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Good Morning,',
-                        style: AppTextStyles.kBodyMedium.copyWith(color: AppColors.kTextSecondary),
-                      ),
-                      Text(
-                        userName,
-                        style: AppTextStyles.kHeading2,
-                      ),
-                    ],
-                  ).animate().fadeIn(duration: AppConstants.kAnimNormal).slideX(begin: -0.1),
+                  child:
+                      Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Good Morning,',
+                                style: AppTextStyles.kBodyMedium.copyWith(
+                                  color: AppColors.kTextSecondary,
+                                ),
+                              ),
+                              Text(userName, style: AppTextStyles.kHeading2),
+                            ],
+                          )
+                          .animate()
+                          .fadeIn(duration: AppConstants.kAnimNormal)
+                          .slideX(begin: -0.1),
                 ),
               ),
 
               // --- Search Bar ---
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: responsivePad,
-                  child: FormBuilder(
-                    key: _formKey,
-                    child: CustomTextField(
-                      name: 'search',
-                      label: '',
-                      hint: 'Search products...',
-                      prefixIcon: Icons.search,
-                      onChanged: (value) {
-                        context.read<ProductBloc>().add(ProductsSearchChanged(value ?? ''));
-                      },
-                    ),
-                  ),
-                ).animate().fadeIn(delay: const Duration(milliseconds: 100)).slideY(begin: 0.1),
+                child:
+                    Padding(
+                          padding: responsivePad,
+                          child: FormBuilder(
+                            key: _formKey,
+                            child: CustomTextField(
+                              name: 'search',
+                              label: '',
+                              hint: 'Search products...',
+                              prefixIcon: Icons.search,
+                              onChanged: (value) {
+                                context.read<ProductBloc>().add(
+                                  ProductsSearchChanged(value ?? ''),
+                                );
+                              },
+                            ),
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(delay: const Duration(milliseconds: 100))
+                        .slideY(begin: 0.1),
               ),
 
               // --- Categories List ---
@@ -154,18 +176,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: BlocBuilder<ProductBloc, ProductState>(
                     builder: (context, state) {
                       String activeCategory = 'All';
-                      if (state is ProductsLoaded && state.activeCategory != null) {
+                      if (state is ProductsLoaded &&
+                          state.activeCategory != null) {
                         activeCategory = state.activeCategory!;
                       }
 
                       return ListView.separated(
                         padding: EdgeInsets.symmetric(
-                            horizontal: responsivePad.left,
-                            vertical: AppConstants.kSpaceMD
+                          horizontal: responsivePad.left,
+                          vertical: AppConstants.kSpaceMD,
                         ),
                         scrollDirection: Axis.horizontal,
                         itemCount: _categories.length,
-                        separatorBuilder: (context, index) => const SizedBox(width: AppConstants.kSpaceSM),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: AppConstants.kSpaceSM),
                         itemBuilder: (context, index) {
                           final category = _categories[index];
                           return CategoryChipWidget(
@@ -186,31 +210,38 @@ class _HomeScreenState extends State<HomeScreen> {
                 ).animate().fadeIn(delay: const Duration(milliseconds: 200)),
               ),
 
-              // --- Featured Banner (Adaptive Height) ---
+              // --- Featured Banner (Flipkart Style Horizontal Scroll) ---
               SliverToBoxAdapter(
                 child: BlocBuilder<ProductBloc, ProductState>(
                   builder: (context, state) {
                     if (state is ProductsLoaded && state.products.isNotEmpty) {
-                      final featuredProducts = state.products.take(3).toList();
+                      // Grab up to 5 featured products
+                      final featuredProducts = state.products.take(5).toList();
 
                       return SizedBox(
-                        height: ResponsiveHelper.hp(context, 25), // Scaled cleanly using your new helper
-                        child: PageView.builder(
-                          controller: _pageController,
+                        height: 200,
+                        child: ListView.separated(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: responsivePad.left,
+                          ),
+                          scrollDirection: Axis.horizontal,
                           itemCount: featuredProducts.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 18),
                           itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            return SizedBox(
+                              width: 170,
                               child: ProductCardWidget(
                                 product: featuredProducts[index],
-                                onTap: () => context.push('/product/${featuredProducts[index].id}'),
+                                onTap: () => context.push(
+                                  '/shop/product/${featuredProducts[index].id}',
+                                ),
                               ),
                             );
                           },
                         ),
-                      ).animate().fadeIn(delay: const Duration(milliseconds: 300)).scale(
-                          begin: const Offset(0.95, 0.95),
-                          curve: Curves.easeOut
+                      ).animate().fadeIn(
+                        delay: const Duration(milliseconds: 300),
                       );
                     }
                     return const SizedBox.shrink();
@@ -221,7 +252,10 @@ class _HomeScreenState extends State<HomeScreen> {
               // --- Section Title ---
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: responsivePad.left, vertical: AppConstants.kSpaceLG),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: responsivePad.left,
+                    vertical: AppConstants.kSpaceLG,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -229,8 +263,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       TextButton(
                         onPressed: () => context.push('/shop'),
                         child: Text(
-                            'View All',
-                            style: AppTextStyles.kButtonText.copyWith(color: AppColors.kAccentIndigo)
+                          'View All',
+                          style: AppTextStyles.kButtonText.copyWith(
+                            color: AppColors.kAccentIndigo,
+                          ),
                         ),
                       ),
                     ],
@@ -249,8 +285,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: ResponsiveGridView(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
+                          childAspectRatio: 0.65,
+                          crossAxisSpacing: 10.0,
+                          mainAxisSpacing: 10.0,
                           items: List.generate(4, (index) => index),
-                          itemBuilder: (context, index, item) => const ShimmerProductCard(),
+                          itemBuilder: (context, index, item) =>
+                              const ShimmerProductCard(),
                         ),
                       ),
                     );
@@ -261,7 +301,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: responsivePad,
                         child: ErrorStateWidget(
                           message: state.message,
-                          onRetry: () => context.read<ProductBloc>().add(const ProductsRefreshRequested()),
+                          onRetry: () => context.read<ProductBloc>().add(
+                            const ProductsRefreshRequested(),
+                          ),
                         ),
                       ),
                     );
@@ -270,7 +312,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Beautiful Empty State
                       return SliverToBoxAdapter(
                         child: EmptyStateWidget.noProducts(
-                          onAction: () => context.read<ProductBloc>().add(const ProductsRefreshRequested()),
+                          onAction: () => context.read<ProductBloc>().add(
+                            const ProductsRefreshRequested(),
+                          ),
                         ),
                       );
                     }
@@ -284,11 +328,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: ResponsiveGridView(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
+                          childAspectRatio: 0.65,
+                          crossAxisSpacing: 10.0,
+                          mainAxisSpacing: 10.0,
                           items: gridProducts,
                           itemBuilder: (context, index, product) {
                             return ProductCardWidget(
                               product: product, // dynamic casting
-                              onTap: () => context.push('/product/${product.id}'),
+                              onTap: () =>
+                                  context.push('/product/${product.id}'),
                             );
                           },
                         ),

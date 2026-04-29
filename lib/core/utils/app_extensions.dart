@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../config/app_config.dart';
 import '../theme/app_colors.dart';
 
 // --- String Extensions ---
@@ -27,10 +28,11 @@ extension StringExtension on String {
 // --- Double Extensions ---
 extension DoubleExtension on double {
   String toCurrency() {
+    int decimals = this == truncateToDouble() ? 0 : 2;
     final format = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
-      decimalDigits: 2,
+      decimalDigits: decimals,
     );
     return format.format(this);
   }
@@ -77,7 +79,10 @@ extension ContextExtension on BuildContext {
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: isError ? AppColors.kError : AppColors.kAccentIndigo,
         behavior: SnackBarBehavior.floating,
@@ -108,5 +113,16 @@ extension ContextExtension on BuildContext {
 
   bool get isDarkMode {
     return Theme.of(this).brightness == Brightness.dark;
+  }
+}
+
+extension ImageUrlExtension on String {
+  String get toEmulatorUrl {
+    // Only swap if we are in development mode on the Android Emulator
+    if (AppConfig.currentEnvironment == AppEnvironment.dev &&
+        contains('localhost')) {
+      return replaceAll('localhost', '10.0.2.2');
+    }
+    return this;
   }
 }

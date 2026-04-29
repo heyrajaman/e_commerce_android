@@ -16,12 +16,9 @@ class ProductRepository {
     int page = 1,
   }) async {
     try {
-      // Build the query parameters map dynamically
-      final queryParams = <String, dynamic>{
-        'page': page,
-      };
+      final queryParams = <String, dynamic>{'page': page};
 
-      if (category != null && category.isNotEmpty) {
+      if (category != null && category.isNotEmpty && category != 'All') {
         queryParams['category'] = category;
       }
 
@@ -34,8 +31,8 @@ class ProductRepository {
         queryParameters: queryParams,
       );
 
-      // Handle both { "products": [...] } wrapper and direct [...] array responses
-      final data = response.data['products'] ?? response.data;
+      final data =
+          response.data['rows'] ?? response.data['products'] ?? response.data;
 
       if (data is List) {
         return data.map((json) => ProductModel.fromJson(json)).toList();

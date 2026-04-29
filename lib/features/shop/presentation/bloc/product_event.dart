@@ -13,11 +13,7 @@ class ProductsFetchRequested extends ProductEvent {
   final String? search;
   final int page;
 
-  const ProductsFetchRequested({
-    this.category,
-    this.search,
-    this.page = 1,
-  });
+  const ProductsFetchRequested({this.category, this.search, this.page = 1});
 
   @override
   List<Object?> get props => [category, search, page];
@@ -56,4 +52,9 @@ class ProductDetailFetchRequested extends ProductEvent {
 /// Dispatched via pull-to-refresh
 class ProductsRefreshRequested extends ProductEvent {
   const ProductsRefreshRequested();
+}
+
+// Event to restore the home screen list
+class RestoreListRequested extends ProductEvent {
+  const RestoreListRequested();
 }

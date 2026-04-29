@@ -5,26 +5,26 @@ class UserModel extends Equatable {
   final String name;
   final String email;
   final String phone;
-  final String? image;
   final String role;
+  final String? profilePic;
 
   const UserModel({
     required this.id,
     required this.name,
     required this.email,
     required this.phone,
-    this.image,
     required this.role,
+    this.profilePic,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['_id'] ?? json['id'] ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       name: json['name'] ?? '',
       email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
-      image: json['image'], // Can be null
+      phone: json['phone']?.toString() ?? '',
       role: json['role'] ?? 'user',
+      profilePic: json['profilePic'],
     );
   }
 
@@ -34,11 +34,11 @@ class UserModel extends Equatable {
       'name': name,
       'email': email,
       'phone': phone,
-      'image': image,
       'role': role,
+      'profilePic': profilePic,
     };
   }
 
   @override
-  List<Object?> get props => [id, name, email, phone, image, role];
+  List<Object?> get props => [id, name, email, phone, role, profilePic];
 }

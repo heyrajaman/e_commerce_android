@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
-import '../models/user_model.dart';
+import '../../../../shared/models/user_model.dart';
 
 class AuthRepository {
   final ApiClient _apiClient;
