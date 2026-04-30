@@ -3,8 +3,8 @@ import 'package:dio/dio.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../shared/services/storage_service.dart';
 import '../../../../shared/models/cart_model.dart';
+import '../../../../shared/services/storage_service.dart';
 
 class CartRepository {
   final ApiClient _apiClient;
@@ -13,8 +13,8 @@ class CartRepository {
   CartRepository({
     required ApiClient apiClient,
     required StorageService storageService,
-  })  : _apiClient = apiClient,
-        _storageService = storageService;
+  }) : _apiClient = apiClient,
+       _storageService = storageService;
 
   Future<CartModel> getCart() async {
     try {
@@ -26,9 +26,7 @@ class CartRepository {
         throw ServerException('User not authenticated');
       }
 
-      final response = await _apiClient.dio.get(
-        ApiEndpoints.cartGet(userId),
-      );
+      final response = await _apiClient.dio.get(ApiEndpoints.cartGet(userId));
 
       final data = response.data['cart'] ?? response.data;
       return CartModel.fromJson(data);
@@ -45,10 +43,7 @@ class CartRepository {
     try {
       final response = await _apiClient.dio.post(
         ApiEndpoints.cartAdd, // Fixed to match your ApiEndpoints
-        data: {
-          'productId': productId,
-          'quantity': quantity,
-        },
+        data: {'productId': productId, 'quantity': quantity},
       );
 
       final data = response.data['cart'] ?? response.data;
@@ -66,9 +61,7 @@ class CartRepository {
     try {
       final response = await _apiClient.dio.put(
         ApiEndpoints.cartUpdate(cartItemId), // Fixed to match your ApiEndpoints
-        data: {
-          'quantity': quantity,
-        },
+        data: {'quantity': quantity},
       );
 
       final data = response.data['cart'] ?? response.data;

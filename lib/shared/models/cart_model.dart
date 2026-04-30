@@ -20,14 +20,16 @@ class CartItemModel extends Equatable {
   });
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
+    final productData = json['Product'] as Map<String, dynamic>;
+
     return CartItemModel(
-      id: json['_id'] ?? json['id'] ?? '',
-      productId: json['productId'] ?? json['product'] ?? '',
-      name: json['name'] ?? '',
-      image: json['image'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      quantity: json['quantity'] ?? 1,
-      stock: json['stock'] ?? 0,
+      id: json['id'].toString(),
+      productId: (json['productId'] ?? json['product'] ?? '').toString(),
+      name: productData['name'] as String,
+      image: productData['imageUrl'] as String,
+      price: (json['price'] as num).toDouble(),
+      quantity: json['quantity'] as int,
+      stock: productData['availableStock'] as int,
     );
   }
 
@@ -65,20 +67,27 @@ class CartItemModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, productId, name, image, price, quantity, stock];
+  List<Object?> get props => [
+    id,
+    productId,
+    name,
+    image,
+    price,
+    quantity,
+    stock,
+  ];
 }
 
 class CartModel extends Equatable {
   final List<CartItemModel> items;
 
-  const CartModel({
-    required this.items,
-  });
+  const CartModel({required this.items});
 
   // Computed Getters
   int get totalItems => items.fold(0, (sum, item) => sum + item.quantity);
 
-  double get subtotal => items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+  double get subtotal =>
+      items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
   bool get isEmpty => items.isEmpty;
 
@@ -86,25 +95,19 @@ class CartModel extends Equatable {
     return CartModel(
       items: json['items'] != null
           ? List<CartItemModel>.from(
-        (json['items'] as List).map((x) => CartItemModel.fromJson(x)),
-      )
+              (json['items'] as List).map((x) => CartItemModel.fromJson(x)),
+            )
           : [],
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'items': items.map((x) => x.toJson()).toList(),
-    };
+    return {'items': items.map((x) => x.toJson()).toList()};
   }
 
   // Helper to copy the cart with updated items
-  CartModel copyWith({
-    List<CartItemModel>? items,
-  }) {
-    return CartModel(
-      items: items ?? this.items,
-    );
+  CartModel copyWith({List<CartItemModel>? items}) {
+    return CartModel(items: items ?? this.items);
   }
 
   @override

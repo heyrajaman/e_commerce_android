@@ -10,11 +10,7 @@ class CartBadgeWidget extends StatelessWidget {
   final VoidCallback onTap;
   final Color? iconColor;
 
-  const CartBadgeWidget({
-    super.key,
-    required this.onTap,
-    this.iconColor,
-  });
+  const CartBadgeWidget({super.key, required this.onTap, this.iconColor});
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +20,9 @@ class CartBadgeWidget extends StatelessWidget {
 
         // Extract item count from loaded or updating states
         if (state is CartLoaded) {
-          itemCount = state.totalItems;
+          itemCount = state.cart.totalItems;
         } else if (state is CartUpdating) {
-          itemCount = state.totalItems;
+          itemCount = state.cart.totalItems;
         }
 
         return Stack(
@@ -47,36 +43,37 @@ class CartBadgeWidget extends StatelessWidget {
               Positioned(
                 right: 4,
                 top: 4,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red, // Bright red for high visibility
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 20,
-                    minHeight: 20,
-                  ),
-                  child: Center(
-                    child: Text(
-                      itemCount > 99 ? '99+' : '$itemCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
-                // The ValueKey ensures the animation re-runs every time the count changes!
-                    .animate(key: ValueKey(itemCount))
-                    .scale(
-                  begin: const Offset(0.3, 0.3),
-                  end: const Offset(1.0, 1.0),
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.elasticOut,
-                ),
+                child:
+                    Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red, // Bright red for high visibility
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 20,
+                            minHeight: 20,
+                          ),
+                          child: Center(
+                            child: Text(
+                              itemCount > 99 ? '99+' : '$itemCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                        // The ValueKey ensures the animation re-runs every time the count changes!
+                        .animate(key: ValueKey(itemCount))
+                        .scale(
+                          begin: const Offset(0.3, 0.3),
+                          end: const Offset(1.0, 1.0),
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.elasticOut,
+                        ),
               ),
           ],
         );

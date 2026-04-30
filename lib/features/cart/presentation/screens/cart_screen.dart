@@ -19,8 +19,20 @@ import '../bloc/cart_bloc.dart';
 import '../bloc/cart_event.dart';
 import '../bloc/cart_state.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Trigger a fresh fetch of cart data from the backend as soon as the screen opens
+    context.read<CartBloc>().add(const CartFetchRequested());
+  }
 
   void _confirmClearCart(BuildContext context) {
     showDialog(
@@ -28,7 +40,9 @@ class CartScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.kGlassWhite,
         title: const Text('Clear Cart'),
-        content: const Text('Are you sure you want to remove all items from your cart?'),
+        content: const Text(
+          'Are you sure you want to remove all items from your cart?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -39,7 +53,12 @@ class CartScreen extends StatelessWidget {
               Navigator.pop(ctx);
               context.read<CartBloc>().add(const CartCleared());
             },
-            child: Text('Clear All', style: AppTextStyles.kBodyMedium.copyWith(color: AppColors.kError)),
+            child: Text(
+              'Clear All',
+              style: AppTextStyles.kBodyMedium.copyWith(
+                color: AppColors.kError,
+              ),
+            ),
           ),
         ],
       ),
@@ -63,7 +82,12 @@ class CartScreen extends StatelessWidget {
               Navigator.pop(ctx);
               context.read<CartBloc>().add(CartItemRemoved(cartItemId));
             },
-            child: Text('Remove', style: AppTextStyles.kBodyMedium.copyWith(color: AppColors.kError)),
+            child: Text(
+              'Remove',
+              style: AppTextStyles.kBodyMedium.copyWith(
+                color: AppColors.kError,
+              ),
+            ),
           ),
         ],
       ),
@@ -82,12 +106,21 @@ class CartScreen extends StatelessWidget {
             BlocBuilder<CartBloc, CartState>(
               builder: (context, state) {
                 bool hasItems = false;
-                if (state is CartLoaded) hasItems = state.cart.items.isNotEmpty;
-                if (state is CartUpdating) hasItems = state.cart.items.isNotEmpty;
+
+                if (state is CartLoaded) {
+                  hasItems = state.cart.items.isNotEmpty;
+                }
+
+                if (state is CartUpdating) {
+                  hasItems = state.cart.items.isNotEmpty;
+                }
 
                 if (hasItems) {
                   return IconButton(
-                    icon: const Icon(Icons.remove_shopping_cart_outlined, color: AppColors.kError),
+                    icon: const Icon(
+                      Icons.remove_shopping_cart_outlined,
+                      color: AppColors.kError,
+                    ),
                     onPressed: () => _confirmClearCart(context),
                   );
                 }
@@ -101,10 +134,31 @@ class CartScreen extends StatelessWidget {
           listener: (context, state) {},
           builder: (context, state) {
             if (state is CartInitial || state is CartLoading) {
-              return const Center(child: CircularProgressIndicator(color: AppColors.kAccentIndigo));
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.kAccentIndigo,
+                ),
+              );
             } else if (state is CartError) {
               return Center(
-                child: Text(state.message, style: AppTextStyles.kBodyMedium.copyWith(color: AppColors.kError)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      state.message,
+                      style: AppTextStyles.kBodyMedium.copyWith(
+                        color: AppColors.kError,
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.kSpaceMD),
+                    ElevatedButton(
+                      onPressed: () => context.read<CartBloc>().add(
+                        const CartFetchRequested(),
+                      ),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
               );
             }
 
@@ -129,7 +183,11 @@ class CartScreen extends StatelessWidget {
                 children: [
                   if (isUpdating) _buildLoadingBar(),
                   Expanded(child: _buildCartList(context, currentCart!.items)),
-                  _buildOrderSummary(context, currentCart.subtotal, isMobile: true),
+                  _buildOrderSummary(
+                    context,
+                    currentCart.subtotal,
+                    isMobile: true,
+                  ),
                 ],
               ),
               tablet: (context) => Row(
@@ -140,7 +198,9 @@ class CartScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         if (isUpdating) _buildLoadingBar(),
-                        Expanded(child: _buildCartList(context, currentCart!.items)),
+                        Expanded(
+                          child: _buildCartList(context, currentCart!.items),
+                        ),
                       ],
                     ),
                   ),
@@ -153,7 +213,11 @@ class CartScreen extends StatelessWidget {
                         bottom: AppConstants.kSpaceLG,
                       ),
                       child: SingleChildScrollView(
-                        child: _buildOrderSummary(context, currentCart.subtotal, isMobile: false),
+                        child: _buildOrderSummary(
+                          context,
+                          currentCart.subtotal,
+                          isMobile: false,
+                        ),
                       ),
                     ),
                   ),
@@ -176,9 +240,13 @@ class CartScreen extends StatelessWidget {
 
   Widget _buildCartList(BuildContext context, List<CartItemModel> items) {
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: AppConstants.kSpaceLG, vertical: AppConstants.kSpaceMD),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.kSpaceLG,
+        vertical: AppConstants.kSpaceMD,
+      ),
       itemCount: items.length,
-      separatorBuilder: (context, index) => const SizedBox(height: AppConstants.kSpaceMD),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AppConstants.kSpaceMD),
       itemBuilder: (context, index) {
         return _buildCartItem(context, items[index]);
       },
@@ -214,16 +282,19 @@ class CartScreen extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: item.image,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                  placeholder: (context, url) =>
+                      const Center(child: CircularProgressIndicator()),
                   errorWidget: (context, url, error) => Container(
                     color: AppColors.kGlassWhite,
-                    child: const Icon(Icons.image_not_supported, color: AppColors.kTextSecondary),
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: AppColors.kTextSecondary,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: AppConstants.kSpaceMD),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,23 +314,39 @@ class CartScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-
                   Row(
                     children: [
                       _buildQuantityBtn(
                         icon: Icons.remove,
                         onTap: item.quantity > 1
-                            ? () => context.read<CartBloc>().add(CartItemQuantityUpdated(cartItemId: item.id, newQuantity: item.quantity - 1))
+                            ? () => context.read<CartBloc>().add(
+                                CartItemQuantityUpdated(
+                                  cartItemId: item.id,
+                                  newQuantity: item.quantity - 1,
+                                ),
+                              )
                             : null,
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppConstants.kSpaceMD),
-                        child: Text('${item.quantity}', style: AppTextStyles.kBodyMedium.copyWith(fontWeight: FontWeight.bold)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppConstants.kSpaceMD,
+                        ),
+                        child: Text(
+                          '${item.quantity}',
+                          style: AppTextStyles.kBodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       _buildQuantityBtn(
                         icon: Icons.add,
                         onTap: item.quantity < item.stock
-                            ? () => context.read<CartBloc>().add(CartItemQuantityUpdated(cartItemId: item.id, newQuantity: item.quantity + 1))
+                            ? () => context.read<CartBloc>().add(
+                                CartItemQuantityUpdated(
+                                  cartItemId: item.id,
+                                  newQuantity: item.quantity + 1,
+                                ),
+                              )
                             : null,
                       ),
                     ],
@@ -267,9 +354,11 @@ class CartScreen extends StatelessWidget {
                 ],
               ),
             ),
-
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: AppColors.kTextSecondary),
+              icon: const Icon(
+                Icons.delete_outline,
+                color: AppColors.kTextSecondary,
+              ),
               onPressed: () => _confirmRemoveItem(context, item.id),
             ),
           ],
@@ -278,22 +367,35 @@ class CartScreen extends StatelessWidget {
     ).animate().fadeIn(duration: AppConstants.kAnimFast).slideX(begin: 0.1);
   }
 
-  Widget _buildQuantityBtn({required IconData icon, required VoidCallback? onTap}) {
+  Widget _buildQuantityBtn({
+    required IconData icon,
+    required VoidCallback? onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: onTap == null ? Colors.grey.withValues(alpha: 0.2) : AppColors.kGlassWhite,
+          color: onTap == null
+              ? Colors.grey.withValues(alpha: 0.2)
+              : AppColors.kGlassWhite,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(color: AppColors.kGlassBorder),
         ),
-        child: Icon(icon, size: 16, color: onTap == null ? Colors.grey : AppColors.kTextPrimary),
+        child: Icon(
+          icon,
+          size: 16,
+          color: onTap == null ? Colors.grey : AppColors.kTextPrimary,
+        ),
       ),
     );
   }
 
-  Widget _buildOrderSummary(BuildContext context, double subtotal, {required bool isMobile}) {
+  Widget _buildOrderSummary(
+    BuildContext context,
+    double subtotal, {
+    required bool isMobile,
+  }) {
     return GlassContainer(
       borderRadius: isMobile ? 0 : AppConstants.kRadiusXL,
       padding: const EdgeInsets.all(AppConstants.kSpaceLG),
@@ -305,7 +407,12 @@ class CartScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Subtotal', style: AppTextStyles.kBodyMedium),
-                Text(subtotal.toCurrency(), style: AppTextStyles.kBodyMedium.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  subtotal.toCurrency(),
+                  style: AppTextStyles.kBodyMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: AppConstants.kSpaceSM),
@@ -313,7 +420,12 @@ class CartScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Shipping', style: AppTextStyles.kBodyMedium),
-                Text('Calculated at checkout', style: AppTextStyles.kLabelSmall.copyWith(color: AppColors.kTextSecondary)),
+                Text(
+                  'Calculated at checkout',
+                  style: AppTextStyles.kLabelSmall.copyWith(
+                    color: AppColors.kTextSecondary,
+                  ),
+                ),
               ],
             ),
             const Padding(
@@ -324,7 +436,12 @@ class CartScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Total', style: AppTextStyles.kHeading3),
-                Text(subtotal.toCurrency(), style: AppTextStyles.kHeading2.copyWith(color: AppColors.kAccentIndigo)),
+                Text(
+                  subtotal.toCurrency(),
+                  style: AppTextStyles.kHeading2.copyWith(
+                    color: AppColors.kAccentIndigo,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: AppConstants.kSpaceLG),
@@ -336,6 +453,10 @@ class CartScreen extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().slideY(begin: 1, duration: AppConstants.kAnimNormal, curve: Curves.easeOut);
+    ).animate().slideY(
+      begin: 1,
+      duration: AppConstants.kAnimNormal,
+      curve: Curves.easeOut,
+    );
   }
 }

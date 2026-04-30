@@ -4,11 +4,13 @@ import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../shared/models/user_model.dart';
+import '../../../../shared/services/storage_service.dart';
 
 class AuthRepository {
   final ApiClient _apiClient;
+  final StorageService _storageService;
 
-  AuthRepository(this._apiClient);
+  AuthRepository(this._apiClient, this._storageService);
 
   Future<UserModel> login(String phone, String password) async {
     try {
@@ -19,7 +21,16 @@ class AuthRepository {
 
       // Depending on your backend response structure, it might be inside a 'user' key
       final userData = response.data['user'] ?? response.data;
-      return UserModel.fromJson(userData);
+      final token = response.data['token'];
+      final user = UserModel.fromJson(userData);
+
+      if (token != null) {
+        await _storageService.saveToken(token);
+      }
+
+      await _storageService.saveUserId(user.id);
+
+      return user;
     } on DioException catch (e) {
       throw e.error is Exception
           ? e.error as Exception
@@ -47,7 +58,16 @@ class AuthRepository {
       );
 
       final userData = response.data['user'] ?? response.data;
-      return UserModel.fromJson(userData);
+      final token = response.data['token'];
+
+      final user = UserModel.fromJson(userData);
+
+      if (token != null) {
+        await _storageService.saveToken(token);
+      }
+      await _storageService.saveUserId(user.id);
+
+      return user;
     } on DioException catch (e) {
       throw e.error is Exception
           ? e.error as Exception
@@ -60,6 +80,8 @@ class AuthRepository {
   Future<void> logout() async {
     try {
       await _apiClient.dio.post(ApiEndpoints.logout);
+      await _storageService.deleteToken();
+      await _storageService.clearAll();
     } on DioException catch (e) {
       throw e.error is Exception
           ? e.error as Exception

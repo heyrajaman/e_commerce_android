@@ -10,6 +10,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_constants.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/responsive_helper.dart';
+import '../../../../shared/widgets/cart_badge_widget.dart';
 import '../../../../shared/widgets/category_chip_widget.dart';
 import '../../../../shared/widgets/custom_app_bar_widget.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
@@ -94,17 +95,10 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Home',
         showBackButton: false,
         actions: [
-          IconButton(
-            icon: const Badge(
-              label: Text('3'),
-              backgroundColor: AppColors.kAccentPink,
-              child: Icon(
-                Icons.shopping_cart_outlined,
-                size: 28,
-                color: AppColors.kTextPrimary,
-              ),
-            ),
-            onPressed: () => context.push('/cart'),
+          // ✅ ADD THIS:
+          CartBadgeWidget(
+            onTap: () => context.push('/cart'),
+            iconColor: AppColors.kTextPrimary,
           ),
           const SizedBox(width: AppConstants.kSpaceMD),
         ],

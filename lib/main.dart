@@ -40,11 +40,10 @@ Future<void> initDependencies() async {
 
   final apiClient = ApiClient();
   await apiClient.init();
-  sl.registerLazySingleton<ApiClient>(() => ApiClient());
-
+  sl.registerSingleton<ApiClient>(apiClient);
   // 2. Features - Auth
-  sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepository(sl<ApiClient>()),
+  sl.registerLazySingleton(
+    () => AuthRepository(sl<ApiClient>(), sl<StorageService>()),
   );
   sl.registerLazySingleton<AuthBloc>(
     () => AuthBloc(
