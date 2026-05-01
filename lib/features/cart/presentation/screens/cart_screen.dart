@@ -448,7 +448,7 @@ class _CartScreenState extends State<CartScreen> {
             PrimaryButton(
               label: 'Proceed to Checkout',
               icon: Icons.payment,
-              onPressed: () => context.push('/checkout'),
+              onPressed: () => context.push('/cart/checkout'),
             ),
           ],
         ),

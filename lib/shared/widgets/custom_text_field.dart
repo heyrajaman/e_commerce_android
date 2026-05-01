@@ -9,6 +9,8 @@ class CustomTextField extends StatefulWidget {
   final String name; // Required for FormBuilder to track field data
   final String label;
   final String? hint;
+  final String? initialValue;
+  final bool readOnly;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
   final TextInputType keyboardType;
@@ -24,6 +26,8 @@ class CustomTextField extends StatefulWidget {
     required this.name,
     required this.label,
     this.hint,
+    this.initialValue,
+    this.readOnly = false,
     this.controller,
     this.validator,
     this.keyboardType = TextInputType.text,
@@ -56,6 +60,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
         FormBuilderTextField(
           name: widget.name,
           controller: widget.controller,
+          initialValue: widget.controller == null ? widget.initialValue : null,
+          readOnly: widget.readOnly,
           validator: widget.validator,
           keyboardType: widget.keyboardType,
           obscureText: widget.isPassword ? _obscureText : false,

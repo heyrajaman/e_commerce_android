@@ -21,6 +21,8 @@ import '../../../../shared/widgets/loading_overlay_widget.dart';
 import '../../../../shared/widgets/mesh_gradient_background.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/responsive_builder_widget.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../cart/presentation/bloc/cart_event.dart';
 import '../../../cart/presentation/bloc/cart_state.dart';
@@ -40,10 +42,58 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'COD';
   bool _isPlacingOrder = false;
 
+  // --- Dynamic Shipping State ---
+  List<Map<String, dynamic>> _shippingRates = [];
+  Map<String, dynamic>? _selectedShippingRate;
+  bool _isLoadingRates = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchShippingRates();
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchShippingRates() async {
+    try {
+      // Adjust the route if your backend shipping rate endpoint differs
+      final response = await GetIt.I<ApiClient>().dio.get(
+        '/api/orders/shipping/shipping-rates/active',
+      );
+
+      if (mounted) {
+        setState(() {
+          final responseData = response.data;
+          List<dynamic> rawList = [];
+
+          if (responseData is List) {
+            rawList = responseData;
+          } else if (responseData is Map && responseData.containsKey('data')) {
+            rawList = responseData['data'] is List ? responseData['data'] : [];
+          } else if (responseData is Map &&
+              responseData.containsKey('shippingRates')) {
+            rawList = responseData['shippingRates'];
+          }
+
+          _shippingRates = List<Map<String, dynamic>>.from(rawList);
+          _isLoadingRates = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingRates = false);
+      }
+      Fluttertoast.showToast(
+        msg: 'Failed to load delivery areas. Please try again.',
+        backgroundColor: AppColors.kError,
+        textColor: Colors.white,
+      );
+    }
   }
 
   void _nextStep() {
@@ -57,7 +107,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _placeOrder() async {
-    // Validate form (Crucial for desktop layout since they don't click "Next Step")
     if (!(_formKey.currentState?.saveAndValidate() ?? false)) {
       Fluttertoast.showToast(
         msg: 'Please check your shipping details.',
@@ -70,23 +119,43 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final cartState = context.read<CartBloc>().state;
     if (cartState is! CartLoaded) return;
 
+    if (_selectedShippingRate == null) {
+      Fluttertoast.showToast(
+        msg: 'Please select a delivery area.',
+        backgroundColor: AppColors.kError,
+        textColor: Colors.white,
+      );
+      return;
+    }
+
     setState(() => _isPlacingOrder = true);
 
     try {
       final addressData = _formKey.currentState!.value;
       final cart = cartState.cart;
 
-      final shippingCost = cart.subtotal > 100 ? 0.0 : 10.0;
+      // Dynamic Shipping Cost
+      final shippingCost =
+          (_selectedShippingRate!['rate'] ??
+                  _selectedShippingRate!['cost'] ??
+                  0.0)
+              .toDouble();
       final totalAmount = cart.subtotal + shippingCost;
 
       final payload = {
         'shippingAddress': addressData,
         'paymentMethod': _selectedPaymentMethod,
-        'items': cart.items.map((item) => {
-          'productId': item.productId,
-          'quantity': item.quantity,
-          'price': item.price,
-        }).toList(),
+        'shippingCost': shippingCost,
+        // Passing explicit shipping cost to backend
+        'items': cart.items
+            .map(
+              (item) => {
+                'productId': item.productId,
+                'quantity': item.quantity,
+                'price': item.price,
+              },
+            )
+            .toList(),
         'totalAmount': totalAmount,
       };
 
@@ -95,13 +164,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         data: payload,
       );
 
-      final orderId = response.data['order']['_id'] ?? response.data['order']['id'] ?? 'UNKNOWN_ID';
+      final orderId =
+          response.data['order']['_id'] ??
+          response.data['order']['id'] ??
+          'UNKNOWN_ID';
 
       if (mounted) {
         context.read<CartBloc>().add(const CartCleared());
-        context.go('/order-success/$orderId');
+        context.go('/cart/order-success/$orderId'); // Updated absolute path
       }
-
     } on DioException catch (e) {
       Fluttertoast.showToast(
         msg: e.response?.data['message'] ?? 'Failed to place order',
@@ -126,10 +197,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return MeshGradientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: const CustomAppBar(
-          title: 'Checkout',
-          showBackButton: true,
-        ),
+        appBar: const CustomAppBar(title: 'Checkout', showBackButton: true),
         body: LoadingOverlay(
           isLoading: _isPlacingOrder,
           message: 'Processing Order...',
@@ -137,12 +205,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             mobile: (context) => Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppConstants.kSpaceMD),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppConstants.kSpaceMD,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildStepIndicator(0, 'Shipping', Icons.local_shipping_outlined),
-                      Container(width: 40, height: 2, color: _currentStep >= 1 ? AppColors.kAccentIndigo : AppColors.kGlassBorder),
+                      _buildStepIndicator(
+                        0,
+                        'Shipping',
+                        Icons.local_shipping_outlined,
+                      ),
+                      Container(
+                        width: 40,
+                        height: 2,
+                        color: _currentStep >= 1
+                            ? AppColors.kAccentIndigo
+                            : AppColors.kGlassBorder,
+                      ),
                       _buildStepIndicator(1, 'Payment', Icons.payment_outlined),
                     ],
                   ),
@@ -152,8 +232,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
-                      _buildShippingStep(isMobile: true),
-                      _buildPaymentStep(isMobile: true),
+                      // Wrapped in SingleChildScrollView to prevent 141px keyboard overflow
+                      SingleChildScrollView(
+                        child: _buildShippingStep(isMobile: true),
+                      ),
+                      SingleChildScrollView(
+                        child: _buildPaymentStep(isMobile: true),
+                      ),
                     ],
                   ),
                 ),
@@ -167,14 +252,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   Expanded(
                     flex: 3,
                     child: SingleChildScrollView(
-                      padding: EdgeInsets.only(left: responsivePad.left, right: AppConstants.kSpaceMD, top: AppConstants.kSpaceLG, bottom: AppConstants.kSpaceXXL),
+                      padding: EdgeInsets.only(
+                        left: responsivePad.left,
+                        right: AppConstants.kSpaceMD,
+                        top: AppConstants.kSpaceLG,
+                        bottom: AppConstants.kSpaceXXL,
+                      ),
                       child: _buildShippingStep(isMobile: false),
                     ),
                   ),
                   Expanded(
                     flex: 2,
                     child: SingleChildScrollView(
-                      padding: EdgeInsets.only(left: AppConstants.kSpaceMD, right: responsivePad.right, top: AppConstants.kSpaceLG, bottom: AppConstants.kSpaceXXL),
+                      padding: EdgeInsets.only(
+                        left: AppConstants.kSpaceMD,
+                        right: responsivePad.right,
+                        top: AppConstants.kSpaceLG,
+                        bottom: AppConstants.kSpaceXXL,
+                      ),
                       child: _buildPaymentStep(isMobile: false),
                     ),
                   ),
@@ -193,14 +288,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       onTap: () {
         if (stepIndex == 0 && _currentStep == 1) {
           setState(() => _currentStep = 0);
-          _pageController.previousPage(duration: AppConstants.kAnimNormal, curve: Curves.easeInOut);
+          _pageController.previousPage(
+            duration: AppConstants.kAnimNormal,
+            curve: Curves.easeInOut,
+          );
         }
       },
       child: Column(
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: isActive ? AppColors.kAccentIndigo : AppColors.kGlassWhite,
+            backgroundColor: isActive
+                ? AppColors.kAccentIndigo
+                : AppColors.kGlassWhite,
             child: Icon(
               icon,
               color: isActive ? Colors.white : AppColors.kTextSecondary,
@@ -211,7 +311,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Text(
             title,
             style: AppTextStyles.kLabelSmall.copyWith(
-              color: isActive ? AppColors.kTextPrimary : AppColors.kTextSecondary,
+              color: isActive
+                  ? AppColors.kTextPrimary
+                  : AppColors.kTextSecondary,
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -221,6 +323,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildShippingStep({required bool isMobile}) {
+    final authState = context.read<AuthBloc>().state;
+    String userName = '';
+    String userPhone = '';
+
+    if (authState is AuthAuthenticated) {
+      userName = authState.user.name;
+      userPhone = authState.user.phone;
+    }
+
     return FormBuilder(
       key: _formKey,
       child: GlassContainer(
@@ -231,44 +342,91 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Text('Shipping Details', style: AppTextStyles.kHeading3),
             const SizedBox(height: AppConstants.kSpaceLG),
 
+            // Locked Full Name Field
             CustomTextField(
               name: 'fullName',
               label: 'Full Name',
-              hint: 'Aman Singh',
+              initialValue: userName,
+              readOnly: true,
               validator: AppValidators.name(),
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
+            // Locked Phone Field
             CustomTextField(
               name: 'phone',
               label: 'Phone Number',
-              hint: '9876543210',
+              initialValue: userPhone,
               keyboardType: TextInputType.phone,
+              readOnly: true,
               validator: AppValidators.phone(),
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
+            // Address Line 1
             CustomTextField(
               name: 'addressLine1',
-              label: 'Address Line 1',
-              hint: 'Street, House No.',
+              label: 'Street Address',
+              hint: 'House No., Building, Street',
               validator: AppValidators.requiredField('Address'),
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
-            CustomTextField(
-              name: 'addressLine2',
-              label: 'Address Line 2 (Optional)',
-              hint: 'Apartment, Suite, etc.',
-            ),
+            // Dynamic Delivery Area Dropdown
+            _isLoadingRates
+                ? const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.kAccentIndigo,
+                      ),
+                    ),
+                  )
+                : FormBuilderDropdown<Map<String, dynamic>>(
+                    name: 'deliveryArea',
+                    decoration: InputDecoration(
+                      labelText: 'Delivery Area',
+                      filled: true,
+                      fillColor: AppColors.kGlassWhite,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.kRadiusMD,
+                        ),
+                        borderSide: const BorderSide(
+                          color: AppColors.kGlassBorder,
+                        ),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value == null ? 'Please select a delivery area' : null,
+                    items: _shippingRates.map((rate) {
+                      // Change 'areaName' or 'region' to match your DB column
+                      final areaName =
+                          rate['areaName'] ?? rate['region'] ?? 'Unknown Area';
+                      return DropdownMenuItem(
+                        value: rate,
+                        child: Text(areaName),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _selectedShippingRate = val;
+                        });
+                      }
+                    },
+                  ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
+            // Locked City and State
             Row(
               children: [
                 Expanded(
                   child: CustomTextField(
                     name: 'city',
                     label: 'City',
+                    initialValue: 'Raipur',
+                    readOnly: true,
                     validator: AppValidators.requiredField('City'),
                   ),
                 ),
@@ -277,6 +435,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   child: CustomTextField(
                     name: 'state',
                     label: 'State',
+                    initialValue: 'Chhattisgarh',
+                    readOnly: true,
                     validator: AppValidators.requiredField('State'),
                   ),
                 ),
@@ -284,20 +444,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
-            CustomTextField(
-              name: 'pincode',
-              label: 'Pincode / Zip',
-              keyboardType: TextInputType.number,
-              validator: AppValidators.pincode(),
-            ),
-
             if (isMobile) ...[
               const SizedBox(height: AppConstants.kSpaceXL),
-              PrimaryButton(
-                label: 'Continue to Payment',
-                onPressed: _nextStep,
-              ),
-            ]
+              PrimaryButton(label: 'Continue to Payment', onPressed: _nextStep),
+            ],
           ],
         ),
       ),
@@ -311,7 +461,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Text('Payment Method', style: AppTextStyles.kHeading3),
         const SizedBox(height: AppConstants.kSpaceSM),
 
-        // --- NEW: RadioGroup ancestor wrapping all options ---
         RadioGroup<String>(
           groupValue: _selectedPaymentMethod,
           onChanged: (val) {
@@ -348,25 +497,49 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           builder: (context, state) {
             if (state is CartLoaded) {
               final subtotal = state.cart.subtotal;
-              final shippingCost = subtotal > 100 ? 0.0 : 10.0;
+
+              // Dynamic shipping cost based on the selected dropdown value
+              final shippingCost = _selectedShippingRate != null
+                  ? (_selectedShippingRate!['rate'] ??
+                            _selectedShippingRate!['cost'] ??
+                            0.0)
+                        .toDouble()
+                  : 0.0;
+
               final total = subtotal + shippingCost;
 
               return GlassContainer(
                 padding: const EdgeInsets.all(AppConstants.kSpaceLG),
                 child: Column(
                   children: [
-                    ...state.cart.items.map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        children: [
-                          Text('${item.quantity}x', style: AppTextStyles.kBodyMedium.copyWith(fontWeight: FontWeight.bold)),
-                          const SizedBox(width: AppConstants.kSpaceSM),
-                          Expanded(child: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                          Text((item.price * item.quantity).toCurrency()),
-                        ],
+                    ...state.cart.items.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${item.quantity}x',
+                              style: AppTextStyles.kBodyMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: AppConstants.kSpaceSM),
+                            Expanded(
+                              child: Text(
+                                item.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text((item.price * item.quantity).toCurrency()),
+                          ],
+                        ),
                       ),
-                    )),
-                    const Divider(color: AppColors.kGlassBorder, height: AppConstants.kSpaceXL),
+                    ),
+                    const Divider(
+                      color: AppColors.kGlassBorder,
+                      height: AppConstants.kSpaceXL,
+                    ),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -380,19 +553,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Shipping'),
-                        Text(shippingCost == 0 ? 'FREE' : shippingCost.toCurrency(),
-                            style: TextStyle(color: shippingCost == 0 ? Colors.green : null)),
+                        Text(
+                          shippingCost == 0
+                              ? 'FREE'
+                              : shippingCost.toCurrency(),
+                          style: TextStyle(
+                            color: shippingCost == 0 ? Colors.green : null,
+                          ),
+                        ),
                       ],
                     ),
                     const Padding(
-                      padding: EdgeInsets.symmetric(vertical: AppConstants.kSpaceSM),
+                      padding: EdgeInsets.symmetric(
+                        vertical: AppConstants.kSpaceSM,
+                      ),
                       child: Divider(color: AppColors.kGlassBorder),
                     ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Grand Total', style: AppTextStyles.kHeading3),
-                        Text(total.toCurrency(), style: AppTextStyles.kHeading2.copyWith(color: AppColors.kAccentIndigo)),
+                        Text(
+                          total.toCurrency(),
+                          style: AppTextStyles.kHeading2.copyWith(
+                            color: AppColors.kAccentIndigo,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: AppConstants.kSpaceXL),
@@ -408,16 +594,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       TextButton(
                         onPressed: () {
                           setState(() => _currentStep = 0);
-                          _pageController.previousPage(duration: AppConstants.kAnimNormal, curve: Curves.easeInOut);
+                          _pageController.previousPage(
+                            duration: AppConstants.kAnimNormal,
+                            curve: Curves.easeInOut,
+                          );
                         },
-                        child: Text('Back to Shipping', style: AppTextStyles.kBodyMedium),
-                      )
-                    ]
+                        child: Text(
+                          'Back to Shipping',
+                          style: AppTextStyles.kBodyMedium,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               );
             }
-            return const Center(child: CircularProgressIndicator(color: AppColors.kAccentIndigo));
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.kAccentIndigo),
+            );
           },
         ),
       ],
@@ -434,13 +628,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final isSelected = _selectedPaymentMethod == value;
 
     return GestureDetector(
-      onTap: isEnabled ? () => setState(() => _selectedPaymentMethod = value) : null,
+      onTap: isEnabled
+          ? () => setState(() => _selectedPaymentMethod = value)
+          : null,
       child: Opacity(
         opacity: isEnabled ? 1.0 : 0.6,
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(
-              color: isSelected ? AppColors.kAccentIndigo : AppColors.kGlassBorder,
+              color: isSelected
+                  ? AppColors.kAccentIndigo
+                  : AppColors.kGlassBorder,
               width: isSelected ? 2 : 1,
             ),
             borderRadius: BorderRadius.circular(AppConstants.kRadiusMD),
@@ -452,13 +650,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             child: Row(
               children: [
-                // --- NEW: Radio no longer handles state or groups itself ---
+                // ✅ FIXED (NO groupValue, NO onChanged)
                 Radio<String>(
                   value: value,
                   activeColor: AppColors.kAccentIndigo,
                 ),
+
                 Icon(icon, color: AppColors.kTextPrimary),
                 const SizedBox(width: AppConstants.kSpaceMD),
+
                 Expanded(
                   child: Text(
                     title,
@@ -467,12 +667,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                   ),
                 ),
+
                 if (badgeText != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.kAccentPink.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(AppConstants.kRadiusSM),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.kRadiusSM,
+                      ),
                     ),
                     child: Text(
                       badgeText,
