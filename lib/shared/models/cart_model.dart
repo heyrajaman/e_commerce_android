@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 class CartItemModel extends Equatable {
   final String id;
   final String productId;
+  final int vendorId;
   final String name;
   final String image;
   final double price;
@@ -12,6 +13,7 @@ class CartItemModel extends Equatable {
   const CartItemModel({
     required this.id,
     required this.productId,
+    required this.vendorId,
     required this.name,
     required this.image,
     required this.price,
@@ -25,6 +27,7 @@ class CartItemModel extends Equatable {
     return CartItemModel(
       id: json['id'].toString(),
       productId: (json['productId'] ?? json['product'] ?? '').toString(),
+      vendorId: json['vendorId'] ?? 0,
       name: productData['name'] as String,
       image: productData['imageUrl'] as String,
       price: (json['price'] as num).toDouble(),
@@ -37,6 +40,7 @@ class CartItemModel extends Equatable {
     return {
       'id': id,
       'productId': productId,
+      'vendorId': vendorId,
       'name': name,
       'image': image,
       'price': price,
@@ -49,6 +53,7 @@ class CartItemModel extends Equatable {
   CartItemModel copyWith({
     String? id,
     String? productId,
+    int? vendorId,
     String? name,
     String? image,
     double? price,
@@ -58,6 +63,7 @@ class CartItemModel extends Equatable {
     return CartItemModel(
       id: id ?? this.id,
       productId: productId ?? this.productId,
+      vendorId: vendorId ?? this.vendorId,
       name: name ?? this.name,
       image: image ?? this.image,
       price: price ?? this.price,
@@ -70,6 +76,7 @@ class CartItemModel extends Equatable {
   List<Object?> get props => [
     id,
     productId,
+    vendorId,
     name,
     image,
     price,

@@ -2,10 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -42,20 +44,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'COD';
   bool _isPlacingOrder = false;
 
+  Map<String, dynamic>? _savedAddressData;
+
   // --- Dynamic Shipping State ---
   List<Map<String, dynamic>> _shippingRates = [];
   Map<String, dynamic>? _selectedShippingRate;
   bool _isLoadingRates = true;
 
+  late Razorpay _razorpay;
+  String? _pendingOrderId;
+
   @override
   void initState() {
     super.initState();
     _fetchShippingRates();
+
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _razorpay.clear();
     super.dispose();
   }
 
@@ -98,6 +111,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   void _nextStep() {
     if (_formKey.currentState?.saveAndValidate() ?? false) {
+      _savedAddressData = Map<String, dynamic>.from(
+        _formKey.currentState!.value,
+      );
       setState(() => _currentStep = 1);
       _pageController.nextPage(
         duration: AppConstants.kAnimNormal,
@@ -106,8 +122,61 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  // 👇 ADD THESE THREE FUNCTIONS 👇
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    if (_pendingOrderId == null) return;
+
+    setState(() => _isPlacingOrder = true);
+
+    try {
+      // 1. Send the exact payload your verifyPayment controller expects
+      final verifyPayload = {
+        'razorpay_order_id': response.orderId,
+        'razorpay_payment_id': response.paymentId,
+        'razorpay_signature': response.signature,
+        'orderId': _pendingOrderId,
+      };
+
+      // Ensure this route matches your backend routing setup!
+      await GetIt.I<ApiClient>().dio.post(
+        '/api/orders/payment/verify',
+        data: verifyPayload,
+      );
+
+      // 2. Clear cart and navigate on success
+      if (mounted) {
+        context.read<CartBloc>().add(const CartCleared());
+        context.go('/cart/order-success/$_pendingOrderId');
+      }
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: 'Payment verification failed. Please contact support.',
+        backgroundColor: AppColors.kError,
+        textColor: Colors.white,
+      );
+    } finally {
+      if (mounted) setState(() => _isPlacingOrder = false);
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    Fluttertoast.showToast(
+      msg: 'Payment Failed: ${response.message}',
+      backgroundColor: AppColors.kError,
+      textColor: Colors.white,
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    Fluttertoast.showToast(
+      msg: 'External wallet selected: ${response.walletName}',
+      backgroundColor: AppColors.kAccentIndigo,
+      textColor: Colors.white,
+    );
+  }
+
   Future<void> _placeOrder() async {
-    if (!(_formKey.currentState?.saveAndValidate() ?? false)) {
+    if (_savedAddressData == null) {
       Fluttertoast.showToast(
         msg: 'Please check your shipping details.',
         backgroundColor: AppColors.kError,
@@ -131,32 +200,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _isPlacingOrder = true);
 
     try {
-      final addressData = _formKey.currentState!.value;
+      final addressData = Map<String, dynamic>.from(_savedAddressData!);
+      addressData['area'] =
+          _selectedShippingRate?['areaName'] ??
+          _selectedShippingRate?['region'] ??
+          'Unknown';
+      addressData.remove('deliveryArea');
+
       final cart = cartState.cart;
 
-      // Dynamic Shipping Cost
-      final shippingCost =
-          (_selectedShippingRate!['rate'] ??
-                  _selectedShippingRate!['cost'] ??
-                  0.0)
-              .toDouble();
-      final totalAmount = cart.subtotal + shippingCost;
+      final double subtotal = (cart.subtotal as num).toDouble();
 
       final payload = {
-        'shippingAddress': addressData,
+        'address': addressData,
         'paymentMethod': _selectedPaymentMethod,
-        'shippingCost': shippingCost,
-        // Passing explicit shipping cost to backend
+        'amount': subtotal,
         'items': cart.items
             .map(
               (item) => {
-                'productId': item.productId,
+                'productId': int.tryParse(item.productId) ?? 0,
+                'vendorId': (item.vendorId > 0) ? item.vendorId : 1,
                 'quantity': item.quantity,
                 'price': item.price,
               },
             )
             .toList(),
-        'totalAmount': totalAmount,
       };
 
       final response = await GetIt.I<ApiClient>().dio.post(
@@ -164,22 +232,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         data: payload,
       );
 
-      final orderId =
-          response.data['order']['_id'] ??
-          response.data['order']['id'] ??
-          'UNKNOWN_ID';
+      final orderId = response.data['orderId']?.toString() ?? 'UNKNOWN_ID';
 
-      if (mounted) {
-        context.read<CartBloc>().add(const CartCleared());
-        context.go('/cart/order-success/$orderId'); // Updated absolute path
+      if (_selectedPaymentMethod == 'RAZORPAY') {
+        _pendingOrderId = orderId;
+
+        final razorpayOrder = response.data['razorpayOrder'];
+
+        var options = {
+          'key': dotenv.env['RAZORPAY_KEY_ID'] ?? '',
+          'amount': razorpayOrder['amount'],
+          'name': 'E-Commerce',
+          'description': 'Order #$orderId',
+          'order_id': razorpayOrder['id'],
+          'prefill': {'contact': addressData['phone']},
+        };
+
+        _razorpay.open(options);
+      } else {
+        if (mounted) {
+          context.read<CartBloc>().add(const CartCleared());
+          context.go('/cart/order-success/$orderId');
+        }
       }
     } on DioException catch (e) {
+      print("❌ BACKEND ERROR: ${e.response?.data}");
       Fluttertoast.showToast(
         msg: e.response?.data['message'] ?? 'Failed to place order',
         backgroundColor: AppColors.kError,
         textColor: Colors.white,
       );
     } catch (e) {
+      print("❌ APP ERROR: $e");
       Fluttertoast.showToast(
         msg: 'An unexpected error occurred',
         backgroundColor: AppColors.kError,
@@ -479,10 +563,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const SizedBox(height: AppConstants.kSpaceSM),
               _buildPaymentOption(
                 title: 'Online Payment',
-                value: 'ONLINE',
+                value: 'RAZORPAY',
                 icon: Icons.credit_card,
-                isEnabled: false,
-                badgeText: 'Coming Soon',
+                isEnabled: true,
               ),
             ],
           ),
@@ -496,17 +579,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         BlocBuilder<CartBloc, CartState>(
           builder: (context, state) {
             if (state is CartLoaded) {
-              final subtotal = state.cart.subtotal;
+              // 1. IRONCLAD CASTS: Force everything to 'num' then to 'double'
+              final double subtotal = (state.cart.subtotal as num).toDouble();
 
-              // Dynamic shipping cost based on the selected dropdown value
-              final shippingCost = _selectedShippingRate != null
-                  ? (_selectedShippingRate!['rate'] ??
-                            _selectedShippingRate!['cost'] ??
-                            0.0)
+              final double shippingCost = _selectedShippingRate != null
+                  ? ((_selectedShippingRate!['rate'] ??
+                                _selectedShippingRate!['cost'] ??
+                                0.0)
+                            as num)
                         .toDouble()
                   : 0.0;
 
-              final total = subtotal + shippingCost;
+              final double total = subtotal + shippingCost;
 
               return GlassContainer(
                 padding: const EdgeInsets.all(AppConstants.kSpaceLG),
@@ -531,7 +615,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            Text((item.price * item.quantity).toCurrency()),
+                            // 2. CAST ITEM TOTALS
+                            Text(
+                              ((item.price * item.quantity) as num)
+                                  .toDouble()
+                                  .toCurrency(),
+                            ),
                           ],
                         ),
                       ),
