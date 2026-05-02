@@ -23,19 +23,43 @@ class ProductsLoading extends ProductState {
 /// It retains the current filter criteria and pagination status.
 class ProductsLoaded extends ProductState {
   final List<ProductModel> products;
+  final List<String> categories;
   final String? activeCategory;
   final String? searchQuery;
   final bool hasMore;
 
   const ProductsLoaded(
-      this.products, {
-        this.activeCategory,
-        this.searchQuery,
-        this.hasMore = true,
-      });
+    this.products, {
+    this.categories = const ['All'],
+    this.activeCategory,
+    this.searchQuery,
+    this.hasMore = true,
+  });
 
   @override
-  List<Object?> get props => [products, activeCategory, searchQuery, hasMore];
+  List<Object?> get props => [
+    products,
+    categories,
+    activeCategory,
+    searchQuery,
+    hasMore,
+  ];
+
+  ProductsLoaded copyWith({
+    List<ProductModel>? products,
+    List<String>? categories,
+    String? activeCategory,
+    String? searchQuery,
+    bool? hasMore,
+  }) {
+    return ProductsLoaded(
+      products ?? this.products,
+      categories: categories ?? this.categories,
+      activeCategory: activeCategory ?? this.activeCategory,
+      searchQuery: searchQuery ?? this.searchQuery,
+      hasMore: hasMore ?? this.hasMore,
+    );
+  }
 }
 
 /// Loading state specifically for fetching a single product's details

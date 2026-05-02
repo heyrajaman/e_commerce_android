@@ -10,6 +10,29 @@ class ProductRepository {
 
   ProductRepository(this._apiClient);
 
+  Future<List<String>> getCategories() async {
+    try {
+      final response = await _apiClient.dio.get('/api/products/categories');
+
+      List<String> categories = ['All'];
+
+      if (response.data is List) {
+        if (response.data.isNotEmpty && response.data[0] is String) {
+          categories.addAll(List<String>.from(response.data));
+        } else {
+          final fetchedCategories = (response.data as List)
+              .map((category) => category['name'] as String)
+              .toList();
+          categories.addAll(fetchedCategories);
+        }
+      }
+
+      return categories;
+    } catch (e) {
+      throw Exception('Failed to load categories: $e');
+    }
+  }
+
   Future<List<ProductModel>> getProducts({
     String? category,
     String? search,

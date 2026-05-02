@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/size_config.dart';
-import '../widgets/adaptive_layout_widget.dart'; // <-- Added this import
+import '../widgets/adaptive_layout_widget.dart';
+import '../widgets/cart_badge_widget.dart';
 
 class MainLayoutScreen extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -19,39 +20,36 @@ class MainLayoutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Responsive sizing initialized perfectly!
     SizeConfig.setScreenSize(context);
 
-    // 2. Define the navigation items using our new AdaptiveDestination class
-    const destinations = [
-      AdaptiveDestination(
+    final destinations = [
+      const AdaptiveDestination(
         label: 'Home',
-        icon: Icons.home_outlined,
-        activeIcon: Icons.home,
+        icon: Icon(Icons.home_outlined),
+        activeIcon: Icon(Icons.home),
       ),
-      AdaptiveDestination(
+      const AdaptiveDestination(
         label: 'Shop',
-        icon: Icons.storefront_outlined,
-        activeIcon: Icons.storefront,
+        icon: Icon(Icons.storefront_outlined),
+        activeIcon: Icon(Icons.storefront),
       ),
       AdaptiveDestination(
         label: 'Cart',
-        icon: Icons.shopping_cart_outlined,
-        activeIcon: Icons.shopping_cart,
+        icon: CartBadgeWidget(onTap: () {}),
+        activeIcon: CartBadgeWidget(onTap: () {}),
       ),
-      AdaptiveDestination(
+      const AdaptiveDestination(
         label: 'Profile',
-        icon: Icons.person_outline,
-        activeIcon: Icons.person,
+        icon: Icon(Icons.person_outline),
+        activeIcon: Icon(Icons.person),
       ),
     ];
 
-    // 3. Return the AdaptiveScaffold wrapper instead of a raw Scaffold
     return AdaptiveScaffold(
       selectedIndex: navigationShell.currentIndex,
       onDestinationSelected: _onDestinationSelected,
       destinations: destinations,
-      body: navigationShell, // GoRouter injects the active screen here
+      body: navigationShell,
     );
   }
 }

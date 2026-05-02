@@ -4,10 +4,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/responsive_helper.dart';
 import 'glass_container.dart';
 
+// 1. UPDATED: Changed IconData to Widget to support custom badges
 class AdaptiveDestination {
   final String label;
-  final IconData icon;
-  final IconData activeIcon;
+  final Widget icon;
+  final Widget activeIcon;
 
   const AdaptiveDestination({
     required this.label,
@@ -33,8 +34,9 @@ class AdaptiveScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveHelper.isMobile(context);
-    // Treat desktop the same as tablet landscape for this specific layout
-    final isTabletOrDesktop = ResponsiveHelper.isTablet(context) || ResponsiveHelper.isDesktop(context);
+    final isTabletOrDesktop =
+        ResponsiveHelper.isTablet(context) ||
+        ResponsiveHelper.isDesktop(context);
     final isPortrait = ResponsiveHelper.isPortrait(context);
 
     Widget layout;
@@ -55,12 +57,11 @@ class AdaptiveScaffold extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
-        child: layout, // The key forces AnimatedSwitcher to animate when the layout changes
+        child: layout,
       ),
     );
   }
 
-  // --- 1. Mobile Portrait (Bottom Navigation) ---
   Widget _buildMobilePortrait(BuildContext context) {
     return Column(
       key: const ValueKey('mobile_portrait'),
@@ -69,7 +70,11 @@ class AdaptiveScaffold extends StatelessWidget {
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              bottom: 16.0,
+            ),
             child: GlassContainer(
               padding: const EdgeInsets.symmetric(vertical: 4),
               borderRadius: 30,
@@ -88,8 +93,10 @@ class AdaptiveScaffold extends StatelessWidget {
                   onTap: onDestinationSelected,
                   items: destinations.map((d) {
                     return BottomNavigationBarItem(
-                      icon: Icon(d.icon),
-                      activeIcon: Icon(d.activeIcon),
+                      icon: d.icon,
+                      // 2. UPDATED: Removed Icon() wrapper
+                      activeIcon: d.activeIcon,
+                      // 3. UPDATED: Removed Icon() wrapper
                       label: d.label,
                     );
                   }).toList(),
@@ -102,7 +109,6 @@ class AdaptiveScaffold extends StatelessWidget {
     );
   }
 
-  // --- 2. Mobile Landscape (Collapsed Rail) ---
   Widget _buildMobileLandscape(BuildContext context) {
     return Row(
       key: const ValueKey('mobile_landscape'),
@@ -119,12 +125,16 @@ class AdaptiveScaffold extends StatelessWidget {
                 selectedIndex: selectedIndex,
                 onDestinationSelected: onDestinationSelected,
                 labelType: NavigationRailLabelType.none,
-                selectedIconTheme: const IconThemeData(color: AppColors.kAccentIndigo),
-                unselectedIconTheme: const IconThemeData(color: AppColors.kTextSecondary),
+                selectedIconTheme: const IconThemeData(
+                  color: AppColors.kAccentIndigo,
+                ),
+                unselectedIconTheme: const IconThemeData(
+                  color: AppColors.kTextSecondary,
+                ),
                 destinations: destinations.map((d) {
                   return NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    selectedIcon: Icon(d.activeIcon),
+                    icon: d.icon, // 4. UPDATED
+                    selectedIcon: d.activeIcon, // 5. UPDATED
                     label: Text(d.label),
                   );
                 }).toList(),
@@ -137,7 +147,6 @@ class AdaptiveScaffold extends StatelessWidget {
     );
   }
 
-  // --- 3. Tablet Portrait (Expanded Rail) ---
   Widget _buildTabletPortrait(BuildContext context) {
     return Row(
       key: const ValueKey('tablet_portrait'),
@@ -155,14 +164,23 @@ class AdaptiveScaffold extends StatelessWidget {
                 minExtendedWidth: 160,
                 selectedIndex: selectedIndex,
                 onDestinationSelected: onDestinationSelected,
-                selectedIconTheme: const IconThemeData(color: AppColors.kAccentIndigo),
-                unselectedIconTheme: const IconThemeData(color: AppColors.kTextSecondary),
-                selectedLabelTextStyle: const TextStyle(color: AppColors.kAccentIndigo, fontWeight: FontWeight.bold),
-                unselectedLabelTextStyle: const TextStyle(color: AppColors.kTextSecondary),
+                selectedIconTheme: const IconThemeData(
+                  color: AppColors.kAccentIndigo,
+                ),
+                unselectedIconTheme: const IconThemeData(
+                  color: AppColors.kTextSecondary,
+                ),
+                selectedLabelTextStyle: const TextStyle(
+                  color: AppColors.kAccentIndigo,
+                  fontWeight: FontWeight.bold,
+                ),
+                unselectedLabelTextStyle: const TextStyle(
+                  color: AppColors.kTextSecondary,
+                ),
                 destinations: destinations.map((d) {
                   return NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    selectedIcon: Icon(d.activeIcon),
+                    icon: d.icon, // 6. UPDATED
+                    selectedIcon: d.activeIcon, // 7. UPDATED
                     label: Text(d.label),
                   );
                 }).toList(),
@@ -175,7 +193,6 @@ class AdaptiveScaffold extends StatelessWidget {
     );
   }
 
-  // --- 4. Tablet Landscape & Desktop (Permanent Drawer) ---
   Widget _buildTabletLandscape(BuildContext context) {
     return Row(
       key: const ValueKey('tablet_landscape'),
@@ -191,8 +208,11 @@ class AdaptiveScaffold extends StatelessWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 40),
-                    // Optional App Logo or Branding here
-                    const Icon(Icons.storefront, size: 48, color: AppColors.kAccentIndigo),
+                    const Icon(
+                      Icons.storefront,
+                      size: 48,
+                      color: AppColors.kAccentIndigo,
+                    ),
                     const SizedBox(height: 40),
                     Expanded(
                       child: ListView.builder(
@@ -201,15 +221,17 @@ class AdaptiveScaffold extends StatelessWidget {
                           final isSelected = selectedIndex == index;
                           final dest = destinations[index];
                           return ListTile(
-                            leading: Icon(
-                              isSelected ? dest.activeIcon : dest.icon,
-                              color: isSelected ? AppColors.kAccentIndigo : AppColors.kTextSecondary,
-                            ),
+                            leading: isSelected ? dest.activeIcon : dest.icon,
+                            // 8. UPDATED: No longer injecting color directly into the icon to avoid breaking CartBadgeWidget
                             title: Text(
                               dest.label,
                               style: TextStyle(
-                                color: isSelected ? AppColors.kAccentIndigo : AppColors.kTextSecondary,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected
+                                    ? AppColors.kAccentIndigo
+                                    : AppColors.kTextSecondary,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                             selected: isSelected,

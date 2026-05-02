@@ -26,8 +26,35 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     on<ProductsCategorySelected>(_onProductsCategorySelected);
     on<ProductDetailFetchRequested>(_onProductDetailFetchRequested);
     on<ProductsRefreshRequested>(_onProductsRefreshRequested);
-
     on<RestoreListRequested>(_onRestoreListRequested);
+
+    // NEW: Listen for the category fetch event
+    on<CategoriesFetchRequested>(_onCategoriesFetchRequested);
+  }
+
+  // NEW: Handler for fetching categories
+  Future<void> _onCategoriesFetchRequested(
+    CategoriesFetchRequested event,
+    Emitter<ProductState> emit,
+  ) async {
+    try {
+      final categories = await _productRepository.getCategories();
+
+      // If products are already loaded, we just inject the new categories into the state
+      if (state is ProductsLoaded) {
+        final currentState = state as ProductsLoaded;
+        final newState = currentState.copyWith(categories: categories);
+        _lastLoadedList = newState;
+        emit(newState);
+      } else {
+        // If products haven't loaded yet, save categories to our backup
+        // so the product fetcher can grab them in a second
+        _lastLoadedList = ProductsLoaded(const [], categories: categories);
+      }
+    } catch (e) {
+      // If categories fail to load, we silently fail and it defaults to ['All']
+      print('Categories fetch failed: $e');
+    }
   }
 
   Future<void> _onProductsFetchRequested(
@@ -45,6 +72,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         page: event.page,
       );
 
+      // CRUCIAL: Preserve existing categories so they don't get erased!
+      List<String> existingCategories = const ['All'];
+      if (state is ProductsLoaded) {
+        existingCategories = (state as ProductsLoaded).categories;
+      } else if (_lastLoadedList != null) {
+        existingCategories = _lastLoadedList!.categories;
+      }
+
       ProductsLoaded newState;
 
       if (state is ProductsLoaded && event.page > 1) {
@@ -52,8 +87,9 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         final combinedProducts = List.of(currentState.products)
           ..addAll(newProducts);
 
-        newState = ProductsLoaded(
-          combinedProducts,
+        // Using our new copyWith method!
+        newState = currentState.copyWith(
+          products: combinedProducts,
           activeCategory: event.category,
           searchQuery: event.search,
           hasMore: newProducts.isNotEmpty,
@@ -61,6 +97,8 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       } else {
         newState = ProductsLoaded(
           newProducts,
+          categories: existingCategories,
+          // Inject the preserved categories here
           activeCategory: event.category,
           searchQuery: event.search,
           hasMore: newProducts.isNotEmpty,
@@ -79,8 +117,9 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     Emitter<ProductState> emit,
   ) {
     String? currentCategory;
-    if (state is ProductsLoaded)
+    if (state is ProductsLoaded) {
       currentCategory = (state as ProductsLoaded).activeCategory;
+    }
     add(
       ProductsFetchRequested(
         search: event.query,
@@ -95,8 +134,9 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     Emitter<ProductState> emit,
   ) {
     String? currentSearch;
-    if (state is ProductsLoaded)
+    if (state is ProductsLoaded) {
       currentSearch = (state as ProductsLoaded).searchQuery;
+    }
     add(
       ProductsFetchRequested(
         category: event.category,
@@ -123,6 +163,9 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     ProductsRefreshRequested event,
     Emitter<ProductState> emit,
   ) {
+    // When refreshing, we also want to refresh the categories!
+    add(const CategoriesFetchRequested());
+
     String? currentCategory;
     String? currentSearch;
     if (state is ProductsLoaded) {

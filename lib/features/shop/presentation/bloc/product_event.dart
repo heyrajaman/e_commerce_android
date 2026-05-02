@@ -58,3 +58,8 @@ class ProductsRefreshRequested extends ProductEvent {
 class RestoreListRequested extends ProductEvent {
   const RestoreListRequested();
 }
+
+/// Dispatched to fetch the list of available categories from the backend
+class CategoriesFetchRequested extends ProductEvent {
+  const CategoriesFetchRequested();
+}
