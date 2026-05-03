@@ -9,6 +9,7 @@ import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_constants.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -55,24 +56,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (image != null && mounted) {
       final currentValues = _profileFormKey.currentState?.value ?? {};
-      final name = currentValues['name'] as String?;
-      final phone = currentValues['phone'] as String?;
+      final email = currentValues['email'] as String?;
 
       final state = context.read<ProfileBloc>().state;
-      String? fallbackName, fallbackPhone;
+      String? fallbackEmail;
 
       if (state is ProfileLoaded) {
-        fallbackName = state.user.name;
-        fallbackPhone = state.user.phone;
+        fallbackEmail = state.user.email;
       } else if (state is ProfileUpdateSuccess) {
-        fallbackName = state.user.name;
-        fallbackPhone = state.user.phone;
+        fallbackEmail = state.user.email;
       }
 
       context.read<ProfileBloc>().add(
         ProfileUpdateRequested(
-          name: name ?? fallbackName ?? '',
-          phone: phone ?? fallbackPhone ?? '',
+          email: email ?? fallbackEmail ?? '', // Sending email now
           imageFile: File(image.path),
         ),
       );
@@ -83,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_profileFormKey.currentState?.saveAndValidate() ?? false) {
       final values = _profileFormKey.currentState!.value;
       context.read<ProfileBloc>().add(
-        ProfileUpdateRequested(name: values['name'], phone: values['phone']),
+        ProfileUpdateRequested(email: values['email']), // Sending email now
       );
     }
   }
@@ -221,10 +218,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // =========================================
 
   Widget _buildProfileHeader(UserModel user) {
-    final initials = user.name.isNotEmpty
-        ? user.name.trim().split(' ').map((e) => e).take(2).join().toUpperCase()
-        : '?';
-
     return Center(
       child: Column(
         children: [
@@ -233,18 +226,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 60,
                 backgroundColor: AppColors.kAccentIndigo.withValues(alpha: 0.2),
-                backgroundImage:
-                    user.profilePic != null && user.profilePic!.isNotEmpty
-                    ? CachedNetworkImageProvider(user.profilePic!)
-                    : null,
-                child: user.profilePic == null || user.profilePic!.isEmpty
-                    ? Text(
-                        initials,
-                        style: AppTextStyles.kHeading1.copyWith(
+                child: ClipOval(
+                  child: user.profilePic != null && user.profilePic!.isNotEmpty
+                      ? CachedNetworkImage(
+                          // CRITICAL FIX: Sanitize the URL here!
+                          imageUrl: AppConfig.sanitizeImageUrl(
+                            user.profilePic!,
+                          ),
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const Icon(
+                            Icons.person,
+                            size: 60,
+                            color: AppColors.kAccentIndigo,
+                          ),
+                          placeholder: (context, url) =>
+                              const CircularProgressIndicator(),
+                        )
+                      : const Icon(
+                          Icons.person,
+                          size: 60,
                           color: AppColors.kAccentIndigo,
                         ),
-                      )
-                    : null,
+                ),
               ),
               Positioned(
                 bottom: 0,
@@ -293,25 +298,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.all(AppConstants.kSpaceLG),
           child: FormBuilder(
             key: _profileFormKey,
-            initialValue: {'name': user.name, 'phone': user.phone},
+            // CRITICAL FIX: Add email to initial values
+            initialValue: {
+              'name': user.name,
+              'phone': user.phone,
+              'email': user.email,
+            },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Personal Information', style: AppTextStyles.kHeading3),
                 const SizedBox(height: AppConstants.kSpaceLG),
 
+                // CRITICAL FIX: Make Name read-only
                 CustomTextField(
                   name: 'name',
                   label: 'Full Name',
-                  validator: AppValidators.name(), // Upgraded to AppValidators
+                  readOnly: true, // Prevents editing
                 ),
                 const SizedBox(height: AppConstants.kSpaceMD),
 
+                // CRITICAL FIX: Make Phone read-only
                 CustomTextField(
                   name: 'phone',
                   label: 'Phone Number',
-                  keyboardType: TextInputType.phone,
-                  validator: AppValidators.phone(), // Upgraded to AppValidators
+                  readOnly: true, // Prevents editing
+                ),
+                const SizedBox(height: AppConstants.kSpaceMD),
+
+                // CRITICAL FIX: Add Editable Email field
+                CustomTextField(
+                  name: 'email',
+                  label: 'Email Address',
+                  keyboardType: TextInputType.emailAddress,
+                  validator: FormBuilderValidators.compose([
+                    FormBuilderValidators.required(),
+                    FormBuilderValidators.email(),
+                  ]),
                 ),
                 const SizedBox(height: AppConstants.kSpaceLG),
 

@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 
 import '../../../../core/error/exceptions.dart';
@@ -18,27 +19,28 @@ class ProfileRepository {
     } on DioException catch (e) {
       throw e.error is Exception
           ? e.error as Exception
-          : ServerException(e.response?.data['message'] ?? 'Failed to fetch profile');
+          : ServerException(
+              e.response?.data['message'] ?? 'Failed to fetch profile',
+            );
     } catch (e) {
       throw ServerException(e.toString());
     }
   }
 
-  Future<UserModel> updateProfile(String name, String phone, File? imageFile) async {
+  Future<UserModel> updateProfile(String email, File? imageFile) async {
     try {
-      final formData = FormData.fromMap({
-        'name': name,
-        'phone': phone,
-      });
+      final formData = FormData.fromMap({'email': email});
 
       if (imageFile != null) {
-        formData.files.add(MapEntry(
-          'image',
-          await MultipartFile.fromFile(
-            imageFile.path,
-            filename: imageFile.path.split('/').last,
+        formData.files.add(
+          MapEntry(
+            'profilePic',
+            await MultipartFile.fromFile(
+              imageFile.path,
+              filename: imageFile.path.split('/').last,
+            ),
           ),
-        ));
+        );
       }
 
       final response = await _apiClient.dio.put(
@@ -52,7 +54,9 @@ class ProfileRepository {
     } on DioException catch (e) {
       throw e.error is Exception
           ? e.error as Exception
-          : ServerException(e.response?.data['message'] ?? 'Failed to update profile');
+          : ServerException(
+              e.response?.data['message'] ?? 'Failed to update profile',
+            );
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -62,15 +66,14 @@ class ProfileRepository {
     try {
       await _apiClient.dio.post(
         '/api/auth/change-password',
-        data: {
-          'oldPassword': oldPassword,
-          'newPassword': newPassword,
-        },
+        data: {'oldPassword': oldPassword, 'newPassword': newPassword},
       );
     } on DioException catch (e) {
       throw e.error is Exception
           ? e.error as Exception
-          : ServerException(e.response?.data['message'] ?? 'Failed to change password');
+          : ServerException(
+              e.response?.data['message'] ?? 'Failed to change password',
+            );
     } catch (e) {
       throw ServerException(e.toString());
     }

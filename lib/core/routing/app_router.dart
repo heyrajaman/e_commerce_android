@@ -7,15 +7,15 @@ import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
-import '../../features/home/presentation/screens/home_screen.dart';
-import '../../features/shop/presentation/screens/shop_screen.dart';
-import '../../features/shop/presentation/screens/product_details_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/checkout/presentation/screens/checkout_screen.dart';
 import '../../features/checkout/presentation/screens/order_success_screen.dart';
-import '../../features/orders/presentation/screens/orders_screen.dart';
+import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
+import '../../features/orders/presentation/screens/orders_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/shop/presentation/screens/product_details_screen.dart';
+import '../../features/shop/presentation/screens/shop_screen.dart';
 import '../../shared/screens/main_layout_screen.dart';
 import '../../shared/widgets/mesh_gradient_background.dart';
 import '../theme/app_colors.dart';
@@ -32,10 +32,13 @@ class AppRouter {
       refreshListenable: GoRouterRefreshStream(authBloc.stream),
       redirect: (context, state) {
         final authState = authBloc.state;
-        final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+        final isAuthRoute =
+            state.matchedLocation == '/login' ||
+            state.matchedLocation == '/register';
         final isSplash = state.matchedLocation == '/';
 
-        if (authState is AuthInitial || (authState is AuthLoading && isSplash)) {
+        if (authState is AuthInitial ||
+            (authState is AuthLoading && isSplash)) {
           return null;
         }
 
@@ -43,7 +46,7 @@ class AppRouter {
           return '/login';
         }
 
-        if (authState is AuthAuthenticated && isAuthRoute) {
+        if (authState is AuthAuthenticated && (isAuthRoute || isSplash)) {
           return '/home';
         }
 
@@ -195,7 +198,9 @@ class GoRouterRefreshStream extends ChangeNotifier {
     notifyListeners();
     _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
   }
+
   late final dynamic _subscription;
+
   @override
   void dispose() {
     _subscription.cancel();

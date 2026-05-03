@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:equatable/equatable.dart';
 
 sealed class ProfileEvent extends Equatable {
@@ -13,18 +14,13 @@ class ProfileFetchRequested extends ProfileEvent {
 }
 
 class ProfileUpdateRequested extends ProfileEvent {
-  final String name;
-  final String phone;
+  final String email;
   final File? imageFile;
 
-  const ProfileUpdateRequested({
-    required this.name,
-    required this.phone,
-    this.imageFile,
-  });
+  const ProfileUpdateRequested({required this.email, this.imageFile});
 
   @override
-  List<Object?> get props => [name, phone, imageFile];
+  List<Object?> get props => [email, imageFile];
 }
 
 class ProfilePasswordChangeRequested extends ProfileEvent {

@@ -22,17 +22,30 @@ class CartItemModel extends Equatable {
   });
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
-    final productData = json['Product'] as Map<String, dynamic>;
+    // Safely extract the nested Product object, fallback to empty map if null
+    final productData = json['Product'] as Map<String, dynamic>? ?? {};
 
     return CartItemModel(
-      id: json['id'].toString(),
+      id: json['id']?.toString() ?? '',
       productId: (json['productId'] ?? json['product'] ?? '').toString(),
-      vendorId: json['vendorId'] ?? 0,
-      name: productData['name'] as String,
-      image: productData['imageUrl'] as String,
-      price: (json['price'] as num).toDouble(),
-      quantity: json['quantity'] as int,
-      stock: productData['availableStock'] as int,
+
+      // CRITICAL FIX: Pull vendorId from the nested productData, not the root json!
+      vendorId:
+          int.tryParse(
+            (productData['vendorId'] ?? json['vendorId'])?.toString() ?? '0',
+          ) ??
+          0,
+
+      name: productData['name']?.toString() ?? 'Unknown Product',
+      image: productData['imageUrl']?.toString() ?? '',
+
+      // Safely parse price whether it arrives as an int, double, or String
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+
+      // Safely parse quantity and stock
+      quantity: int.tryParse(json['quantity']?.toString() ?? '1') ?? 1,
+      stock:
+          int.tryParse(productData['availableStock']?.toString() ?? '0') ?? 0,
     );
   }
 
@@ -49,7 +62,6 @@ class CartItemModel extends Equatable {
     };
   }
 
-  // Helper to create a copy of the item with a new quantity (useful for optimistic UI updates)
   CartItemModel copyWith({
     String? id,
     String? productId,
@@ -90,7 +102,6 @@ class CartModel extends Equatable {
 
   const CartModel({required this.items});
 
-  // Computed Getters
   int get totalItems => items.fold(0, (sum, item) => sum + item.quantity);
 
   double get subtotal =>
@@ -100,11 +111,12 @@ class CartModel extends Equatable {
 
   factory CartModel.fromJson(Map<String, dynamic> json) {
     return CartModel(
-      items: json['items'] != null
-          ? List<CartItemModel>.from(
-              (json['items'] as List).map((x) => CartItemModel.fromJson(x)),
-            )
-          : [],
+      // Safely map the items list to avoid crashes if it's null or missing
+      items:
+          (json['items'] as List<dynamic>?)
+              ?.map((x) => CartItemModel.fromJson(x as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -112,7 +124,6 @@ class CartModel extends Equatable {
     return {'items': items.map((x) => x.toJson()).toList()};
   }
 
-  // Helper to copy the cart with updated items
   CartModel copyWith({List<CartItemModel>? items}) {
     return CartModel(items: items ?? this.items);
   }

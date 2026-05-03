@@ -35,23 +35,41 @@ class ProductModel extends Equatable {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
-      // Handle both MongoDB '_id' and standard 'id'
-      id: json['id'].toString(),
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Unknown Product',
+      description: json['description']?.toString() ?? '',
+
+      // Safely parse numbers
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
       discountPrice: json['discountPrice'] != null
-          ? (json['discountPrice'] as num).toDouble()
+          ? double.tryParse(json['discountPrice'].toString())
           : null,
+
       images: json['images'] != null ? List<String>.from(json['images']) : [],
+
       category: json['Category'] != null
-          ? json['Category']['name'] ?? ''
-          : (json['category'] ?? ''),
-      stock: json['availableStock'] ?? json['stock'] ?? 0,
+          ? json['Category']['name']?.toString() ?? ''
+          : (json['category']?.toString() ?? ''),
+
+      stock:
+          int.tryParse(
+            json['availableStock']?.toString() ??
+                json['stock']?.toString() ??
+                '0',
+          ) ??
+          0,
+
       vendorId:
           json['vendorId']?.toString() ?? json['vendor']?.toString() ?? '',
-      rating: (json['rating'] ?? 0).toDouble(),
-      reviewCount: json['reviewCount'] ?? json['numOfReviews'] ?? 0,
+
+      rating: double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
+      reviewCount:
+          int.tryParse(
+            json['reviewCount']?.toString() ??
+                json['numOfReviews']?.toString() ??
+                '0',
+          ) ??
+          0,
     );
   }
 

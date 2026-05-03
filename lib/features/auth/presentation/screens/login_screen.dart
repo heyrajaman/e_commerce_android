@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:go_router/go_router.dart';
 
@@ -122,29 +121,76 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ]),
                           ),
-                          const SizedBox(height: AppConstants.kSpaceXL),
+                          const SizedBox(height: AppConstants.kSpaceMD),
 
-                          // BlocConsumer listens to AuthBloc to show errors or navigate,
-                          // and builds the UI to show the loading spinner when needed.
+                          // BlocConsumer updated to show error in UI instead of Toast
                           BlocConsumer<AuthBloc, AuthState>(
                             listener: (context, state) {
                               if (state is AuthAuthenticated) {
                                 context.go('/home');
-                              } else if (state is AuthError) {
-                                Fluttertoast.showToast(
-                                  msg: state.message,
-                                  backgroundColor: AppColors.kError,
-                                  textColor: Colors.white,
-                                  gravity: ToastGravity.BOTTOM,
-                                );
                               }
+                              // Removed the Fluttertoast error popup from here!
                             },
                             builder: (context, state) {
-                              return PrimaryButton(
-                                label: 'LOGIN',
-                                icon: Icons.login,
-                                isLoading: state is AuthLoading,
-                                onPressed: _onLogin,
+                              return Column(
+                                children: [
+                                  // 🟢 CRITICAL FIX: If there is an error, show it here in the UI!
+                                  if (state is AuthError)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: AppConstants.kSpaceMD,
+                                      ),
+                                      child:
+                                          Container(
+                                            padding: const EdgeInsets.all(
+                                              AppConstants.kSpaceSM,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.kError
+                                                  .withValues(alpha: 0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: AppColors.kError
+                                                    .withValues(alpha: 0.5),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.error_outline,
+                                                  color: AppColors.kError,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(
+                                                  width: AppConstants.kSpaceSM,
+                                                ),
+                                                Expanded(
+                                                  child: Text(
+                                                    state.message,
+                                                    style: AppTextStyles
+                                                        .kBodyMedium
+                                                        .copyWith(
+                                                          color:
+                                                              AppColors.kError,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ).animate().fadeIn().slideY(
+                                            begin: -0.2,
+                                            end: 0,
+                                          ),
+                                    ),
+
+                                  PrimaryButton(
+                                    label: 'LOGIN',
+                                    icon: Icons.login,
+                                    isLoading: state is AuthLoading,
+                                    onPressed: _onLogin,
+                                  ),
+                                ],
                               );
                             },
                           ),

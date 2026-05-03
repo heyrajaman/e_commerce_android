@@ -10,24 +10,27 @@ import 'profile_state.dart';
 
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final ProfileRepository _profileRepository;
-  final AuthBloc _authBloc; // Injected to easily force a logout on password change
+  final AuthBloc
+  _authBloc; // Injected to easily force a logout on password change
 
   ProfileBloc({
     required ProfileRepository profileRepository,
     required AuthBloc authBloc,
-  })  : _profileRepository = profileRepository,
-        _authBloc = authBloc,
-        super(const ProfileInitial()) {
+  }) : _profileRepository = profileRepository,
+       _authBloc = authBloc,
+       super(const ProfileInitial()) {
     on<ProfileFetchRequested>(_onProfileFetchRequested);
     on<ProfileUpdateRequested>(_onProfileUpdateRequested);
     on<ProfilePasswordChangeRequested>(_onProfilePasswordChangeRequested);
   }
 
   Future<void> _onProfileFetchRequested(
-      ProfileFetchRequested event,
-      Emitter<ProfileState> emit,
-      ) async {
-    emit(const ProfileLoading());
+    ProfileFetchRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    if (state is! ProfileLoaded && state is! ProfileUpdateSuccess) {
+      emit(const ProfileLoading());
+    }
     try {
       final user = await _profileRepository.getProfile();
       emit(ProfileLoaded(user));
@@ -37,9 +40,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   }
 
   Future<void> _onProfileUpdateRequested(
-      ProfileUpdateRequested event,
-      Emitter<ProfileState> emit,
-      ) async {
+    ProfileUpdateRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
     // Keep the current user data visible while updating
     if (state is ProfileLoaded) {
       emit(ProfileUpdating((state as ProfileLoaded).user));
@@ -48,9 +51,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     }
 
     try {
+      // CRITICAL FIX: Only pass email and imageFile (2 arguments)
       final updatedUser = await _profileRepository.updateProfile(
-        event.name,
-        event.phone,
+        event.email,
         event.imageFile,
       );
 
@@ -78,16 +81,21 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   }
 
   Future<void> _onProfilePasswordChangeRequested(
-      ProfilePasswordChangeRequested event,
-      Emitter<ProfileState> emit,
-      ) async {
+    ProfilePasswordChangeRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
     // Capture current user so we don't lose the profile view during the network call
     final currentUser = (state is ProfileLoaded)
         ? (state as ProfileLoaded).user
-        : (state is ProfileUpdateSuccess ? (state as ProfileUpdateSuccess).user : null);
+        : (state is ProfileUpdateSuccess
+              ? (state as ProfileUpdateSuccess).user
+              : null);
 
     try {
-      await _profileRepository.changePassword(event.oldPassword, event.newPassword);
+      await _profileRepository.changePassword(
+        event.oldPassword,
+        event.newPassword,
+      );
 
       emit(const ProfilePasswordChangeSuccess());
 
@@ -99,7 +107,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       // Force user to log in again with their new credentials
       _authBloc.add(const AuthLogoutRequested());
-
     } catch (e) {
       if (currentUser != null) {
         emit(ProfileLoaded(currentUser));
