@@ -11,6 +11,11 @@ class OrdersFetchRequested extends OrderEvent {
   const OrdersFetchRequested();
 }
 
+// 🟢 NEW: Event to trigger loading the next page
+class OrdersLoadMoreRequested extends OrderEvent {
+  const OrdersLoadMoreRequested();
+}
+
 class OrderDetailFetchRequested extends OrderEvent {
   final String orderId;
 

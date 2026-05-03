@@ -5,22 +5,47 @@ import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../shared/models/order_model.dart';
 
+class PaginatedOrderResponse {
+  final List<OrderModel> orders;
+  final int currentPage;
+  final int totalPages;
+
+  PaginatedOrderResponse({
+    required this.orders,
+    required this.currentPage,
+    required this.totalPages,
+  });
+}
+
 class OrderRepository {
   final ApiClient _apiClient;
 
   OrderRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
-  Future<List<OrderModel>> getUserOrders() async {
+  Future<PaginatedOrderResponse> getUserOrders({
+    int page = 1,
+    int limit = 10,
+  }) async {
     try {
-      final response = await _apiClient.dio.get(ApiEndpoints.userOrders);
+      final response = await _apiClient.dio.get(
+        ApiEndpoints.userOrders,
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+        }, // Send pagination data to backend
+      );
 
-      // Handle both cases: wrapped in 'orders' key or returned as a raw list
-      final data = response.data['orders'] ?? response.data;
+      final dynamic rawData = response.data;
+      final List<dynamic> dataList =
+          rawData['orders'] ?? rawData['data'] ?? rawData['rows'] ?? [];
 
-      if (data is List) {
-        return data.map((json) => OrderModel.fromJson(json)).toList();
-      }
-      return [];
+      final orders = dataList.map((json) => OrderModel.fromJson(json)).toList();
+
+      return PaginatedOrderResponse(
+        orders: orders,
+        currentPage: rawData['currentPage'] ?? 1,
+        totalPages: rawData['totalPages'] ?? 1,
+      );
     } on DioException catch (e) {
       throw e.error is Exception
           ? e.error as Exception
@@ -33,7 +58,6 @@ class OrderRepository {
   Future<OrderModel> getOrderById(String id) async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.orderDetails(id));
-
       final data = response.data['order'] ?? response.data;
       return OrderModel.fromJson(data);
     } on DioException catch (e) {
@@ -60,7 +84,6 @@ class OrderRepository {
   Future<OrderModel> trackOrder(String id) async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.trackOrder(id));
-
       final data = response.data['order'] ?? response.data;
       return OrderModel.fromJson(data);
     } on DioException catch (e) {

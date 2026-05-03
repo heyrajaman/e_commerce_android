@@ -17,13 +17,33 @@ class OrdersLoading extends OrderState {
   const OrdersLoading();
 }
 
+// 🟢 UPDATED: Now tracks current page and if we hit the end of the list
 class OrdersLoaded extends OrderState {
   final List<OrderModel> orders;
+  final bool hasReachedMax;
+  final int currentPage;
 
-  const OrdersLoaded(this.orders);
+  const OrdersLoaded({
+    required this.orders,
+    this.hasReachedMax = false,
+    this.currentPage = 1,
+  });
+
+  // Helper to append new orders to the existing list
+  OrdersLoaded copyWith({
+    List<OrderModel>? orders,
+    bool? hasReachedMax,
+    int? currentPage,
+  }) {
+    return OrdersLoaded(
+      orders: orders ?? this.orders,
+      hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+      currentPage: currentPage ?? this.currentPage,
+    );
+  }
 
   @override
-  List<Object?> get props => [orders];
+  List<Object?> get props => [orders, hasReachedMax, currentPage];
 }
 
 class OrderDetailLoading extends OrderState {

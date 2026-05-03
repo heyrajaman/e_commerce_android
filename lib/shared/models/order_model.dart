@@ -5,22 +5,30 @@ enum OrderStatus {
   confirmed,
   shipped,
   delivered,
-  cancelled;
+  cancelled,
+  returned; // 🟢 Added 'returned' to the enum
 
   // Helper to parse from JSON string
   static OrderStatus fromString(String status) {
     switch (status.toLowerCase()) {
-      case 'confirmed': return OrderStatus.confirmed;
-      case 'shipped': return OrderStatus.shipped;
-      case 'delivered': return OrderStatus.delivered;
-      case 'cancelled': return OrderStatus.cancelled;
+      case 'confirmed':
+        return OrderStatus.confirmed;
+      case 'shipped':
+        return OrderStatus.shipped;
+      case 'delivered':
+        return OrderStatus.delivered;
+      case 'cancelled':
+        return OrderStatus.cancelled;
+      case 'returned':
+      case 'return requested':
+      case 'return_requested':
+        return OrderStatus.returned; // 🟢 Maps all backend return statuses here
       case 'pending':
       default:
         return OrderStatus.pending;
     }
   }
 
-  // Helper to convert to JSON string
   String toJsonString() => name;
 }
 
@@ -45,13 +53,14 @@ class ShippingAddressModel extends Equatable {
 
   factory ShippingAddressModel.fromJson(Map<String, dynamic> json) {
     return ShippingAddressModel(
-      fullName: json['fullName'] ?? '',
-      phone: json['phone'] ?? '',
-      addressLine1: json['addressLine1'] ?? '',
-      addressLine2: json['addressLine2'],
-      city: json['city'] ?? '',
-      state: json['state'] ?? '',
-      pincode: json['pincode'] ?? '',
+      fullName: json['fullName']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      addressLine1:
+          json['addressLine1']?.toString() ?? json['address']?.toString() ?? '',
+      addressLine2: json['addressLine2']?.toString(),
+      city: json['city']?.toString() ?? '',
+      state: json['state']?.toString() ?? '',
+      pincode: json['pincode']?.toString() ?? '',
     );
   }
 
@@ -96,9 +105,10 @@ class OrderItemModel extends Equatable {
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     return OrderItemModel(
-      productId: json['productId'] ?? json['product'] ?? '',
-      name: json['name'] ?? '',
-      image: json['image'] ?? '',
+      productId:
+          json['productId']?.toString() ?? json['product']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      image: json['image']?.toString() ?? '',
       price: (json['price'] ?? 0).toDouble(),
       quantity: json['quantity'] ?? 1,
     );
@@ -140,21 +150,25 @@ class OrderModel extends Equatable {
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    // 🟢 FIX: Look for 'OrderItems', 'orderItems', AND 'items' to fix the "0 items" bug
+    final itemsList =
+        json['items'] ?? json['OrderItems'] ?? json['orderItems'] ?? [];
+
     return OrderModel(
-      id: json['_id'] ?? json['id'] ?? '',
-      items: json['items'] != null
-          ? List<OrderItemModel>.from(
-        (json['items'] as List).map((x) => OrderItemModel.fromJson(x)),
-      )
-          : [],
-      shippingAddress: ShippingAddressModel.fromJson(json['shippingAddress'] ?? {}),
-      paymentMethod: json['paymentMethod'] ?? 'COD',
-      totalAmount: (json['totalAmount'] ?? 0).toDouble(),
-      status: OrderStatus.fromString(json['status'] ?? 'pending'),
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      items: List<OrderItemModel>.from(
+        (itemsList as List).map((x) => OrderItemModel.fromJson(x)),
+      ),
+      shippingAddress: ShippingAddressModel.fromJson(
+        json['shippingAddress'] ?? json['address'] ?? {},
+      ),
+      paymentMethod: json['paymentMethod']?.toString() ?? 'COD',
+      totalAmount: (json['totalAmount'] ?? json['amount'] ?? 0).toDouble(),
+      status: OrderStatus.fromString(json['status']?.toString() ?? 'pending'),
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
-      trackingInfo: json['trackingInfo'],
+      trackingInfo: json['trackingInfo']?.toString(),
     );
   }
 
