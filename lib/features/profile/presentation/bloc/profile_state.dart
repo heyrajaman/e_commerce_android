@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../../shared/models/address_model.dart';
 import '../../../../shared/models/user_model.dart';
 
 sealed class ProfileState extends Equatable {
@@ -52,6 +53,25 @@ class ProfileError extends ProfileState {
   final String message;
 
   const ProfileError(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+// Make sure to import AddressModel!
+class ProfileAddressesLoaded extends ProfileState {
+  final List<AddressModel> addresses;
+
+  const ProfileAddressesLoaded(this.addresses);
+
+  @override
+  List<Object?> get props => [addresses];
+}
+
+class ProfileAddressActionSuccess extends ProfileState {
+  final String message;
+
+  const ProfileAddressActionSuccess(this.message);
 
   @override
   List<Object?> get props => [message];

@@ -440,6 +440,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
             _buildMenuCard(
+              icon: Icons.location_on_outlined,
+              title: 'My Addresses',
+              onTap: () {
+                context.push('/addresses').then((_) {
+                  if (context.mounted) {
+                    context.read<ProfileBloc>().add(
+                      const ProfileFetchRequested(),
+                    );
+                  }
+                });
+              },
+            ),
+            const SizedBox(height: AppConstants.kSpaceMD),
+            _buildMenuCard(
               icon: Icons.notifications_none_outlined,
               title: 'Notifications',
               onTap: () {

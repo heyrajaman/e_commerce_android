@@ -22,6 +22,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<ProfileFetchRequested>(_onProfileFetchRequested);
     on<ProfileUpdateRequested>(_onProfileUpdateRequested);
     on<ProfilePasswordChangeRequested>(_onProfilePasswordChangeRequested);
+    on<ProfileAddressesFetchRequested>(_onAddressesFetchRequested);
+    on<ProfileAddressAddRequested>(_onAddressAddRequested);
+    on<ProfileAddressDeleteRequested>(_onAddressDeleteRequested);
   }
 
   Future<void> _onProfileFetchRequested(
@@ -119,6 +122,53 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         backgroundColor: Colors.red,
         textColor: Colors.white,
       );
+    }
+  }
+
+  Future<void> _onAddressesFetchRequested(
+    ProfileAddressesFetchRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(const ProfileLoading());
+    try {
+      final addresses = await _profileRepository.getAddresses();
+      emit(ProfileAddressesLoaded(addresses));
+    } catch (e) {
+      emit(ProfileError(e.toString()));
+    }
+  }
+
+  Future<void> _onAddressAddRequested(
+    ProfileAddressAddRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(const ProfileLoading());
+    try {
+      await _profileRepository.addAddress(
+        event.addressLine1,
+        event.state,
+        event.city,
+        event.area,
+        event.isDefault,
+      );
+      emit(const ProfileAddressActionSuccess("Address added successfully!"));
+      add(ProfileAddressesFetchRequested()); // Refresh the list
+    } catch (e) {
+      emit(ProfileError(e.toString()));
+    }
+  }
+
+  Future<void> _onAddressDeleteRequested(
+    ProfileAddressDeleteRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(const ProfileLoading());
+    try {
+      await _profileRepository.deleteAddress(event.addressId);
+      emit(const ProfileAddressActionSuccess("Address deleted."));
+      add(ProfileAddressesFetchRequested()); // Refresh the list
+    } catch (e) {
+      emit(ProfileError(e.toString()));
     }
   }
 }

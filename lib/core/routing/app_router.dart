@@ -13,6 +13,7 @@ import '../../features/checkout/presentation/screens/order_success_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/orders/presentation/screens/orders_screen.dart';
+import '../../features/profile/presentation/screens/addresses_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/shop/presentation/screens/product_details_screen.dart';
 import '../../features/shop/presentation/screens/shop_screen.dart';
@@ -160,6 +161,11 @@ class AppRouter {
             final orderId = state.pathParameters['id']!;
             return OrderDetailScreen(orderId: orderId);
           },
+        ),
+        GoRoute(
+          path: '/addresses',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const AddressesScreen(),
         ),
       ],
     );

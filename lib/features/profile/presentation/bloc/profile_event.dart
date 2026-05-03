@@ -35,3 +35,33 @@ class ProfilePasswordChangeRequested extends ProfileEvent {
   @override
   List<Object?> get props => [oldPassword, newPassword];
 }
+
+class ProfileAddressesFetchRequested extends ProfileEvent {}
+
+class ProfileAddressAddRequested extends ProfileEvent {
+  final String addressLine1;
+  final String state;
+  final String city;
+  final String area;
+  final bool isDefault;
+
+  const ProfileAddressAddRequested({
+    required this.addressLine1,
+    required this.state,
+    required this.city,
+    required this.area,
+    required this.isDefault,
+  });
+
+  @override
+  List<Object?> get props => [addressLine1, state, city, area, isDefault];
+}
+
+class ProfileAddressDeleteRequested extends ProfileEvent {
+  final String addressId;
+
+  const ProfileAddressDeleteRequested(this.addressId);
+
+  @override
+  List<Object?> get props => [addressId];
+}
