@@ -30,8 +30,10 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    // Trigger a fresh fetch of cart data from the backend as soon as the screen opens
-    context.read<CartBloc>().add(const CartFetchRequested());
+    final state = context.read<CartBloc>().state;
+    if (state is! CartLoading) {
+      context.read<CartBloc>().add(const CartFetchRequested());
+    }
   }
 
   void _confirmClearCart(BuildContext context) {
@@ -131,15 +133,27 @@ class _CartScreenState extends State<CartScreen> {
           ],
         ),
         body: BlocConsumer<CartBloc, CartState>(
-          listener: (context, state) {},
+          listener: (context, state) {
+            if (state is CartError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.kError,
+                ),
+              );
+            }
+          },
           builder: (context, state) {
-            if (state is CartInitial || state is CartLoading) {
+            if (state is CartInitial ||
+                (state is CartLoading && state is! CartUpdating)) {
               return const Center(
                 child: CircularProgressIndicator(
                   color: AppColors.kAccentIndigo,
                 ),
               );
-            } else if (state is CartError) {
+            }
+
+            if (state is CartError && state is! CartLoaded) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -172,9 +186,17 @@ class _CartScreenState extends State<CartScreen> {
               isUpdating = true;
             }
 
-            if (currentCart == null || currentCart.isEmpty) {
+            if ((currentCart == null || currentCart.isEmpty) && !isUpdating) {
               return EmptyStateWidget.emptyCart(
                 onAction: () => context.go('/home'),
+              );
+            }
+
+            if (currentCart == null) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.kAccentIndigo,
+                ),
               );
             }
 
@@ -242,8 +264,7 @@ class _CartScreenState extends State<CartScreen> {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.kSpaceLG,
-        vertical: AppConstants.kSpaceMD,
-      ),
+      ).copyWith(top: AppConstants.kSpaceMD, bottom: 100),
       itemCount: items.length,
       separatorBuilder: (context, index) =>
           const SizedBox(height: AppConstants.kSpaceMD),
@@ -279,19 +300,27 @@ class _CartScreenState extends State<CartScreen> {
               child: SizedBox(
                 width: 80,
                 height: 80,
-                child: CachedNetworkImage(
-                  imageUrl: item.image,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) =>
-                      const Center(child: CircularProgressIndicator()),
-                  errorWidget: (context, url, error) => Container(
-                    color: AppColors.kGlassWhite,
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      color: AppColors.kTextSecondary,
-                    ),
-                  ),
-                ),
+                child: (item.image.isEmpty)
+                    ? Container(
+                        color: AppColors.kGlassWhite,
+                        child: const Icon(
+                          Icons.sync,
+                          color: AppColors.kAccentIndigo,
+                        ),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: item.image,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) =>
+                            const Center(child: CircularProgressIndicator()),
+                        errorWidget: (context, url, error) => Container(
+                          color: AppColors.kGlassWhite,
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: AppColors.kTextSecondary,
+                          ),
+                        ),
+                      ),
               ),
             ),
             const SizedBox(width: AppConstants.kSpaceMD),
@@ -396,61 +425,71 @@ class _CartScreenState extends State<CartScreen> {
     double subtotal, {
     required bool isMobile,
   }) {
-    return GlassContainer(
-      borderRadius: isMobile ? 0 : AppConstants.kRadiusXL,
-      padding: const EdgeInsets.all(AppConstants.kSpaceLG),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Subtotal', style: AppTextStyles.kBodyMedium),
-                Text(
-                  subtotal.toCurrency(),
-                  style: AppTextStyles.kBodyMedium.copyWith(
-                    fontWeight: FontWeight.bold,
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: isMobile ? 85.0 : 0,
+        left: isMobile ? 16.0 : 0,
+        right: isMobile ? 16.0 : 0,
+      ),
+      child: GlassContainer(
+        borderRadius: isMobile
+            ? AppConstants.kRadiusXL
+            : AppConstants.kRadiusXL,
+        padding: const EdgeInsets.all(AppConstants.kSpaceLG),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Subtotal', style: AppTextStyles.kBodyMedium),
+                  Text(
+                    subtotal.toCurrency(),
+                    style: AppTextStyles.kBodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.kSpaceSM),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Shipping', style: AppTextStyles.kBodyMedium),
-                Text(
-                  'Calculated at checkout',
-                  style: AppTextStyles.kLabelSmall.copyWith(
-                    color: AppColors.kTextSecondary,
+                ],
+              ),
+              const SizedBox(height: AppConstants.kSpaceSM),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Shipping', style: AppTextStyles.kBodyMedium),
+                  Text(
+                    'Calculated at checkout',
+                    style: AppTextStyles.kLabelSmall.copyWith(
+                      color: AppColors.kTextSecondary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppConstants.kSpaceSM),
-              child: Divider(color: AppColors.kGlassBorder),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Total', style: AppTextStyles.kHeading3),
-                Text(
-                  subtotal.toCurrency(),
-                  style: AppTextStyles.kHeading2.copyWith(
-                    color: AppColors.kAccentIndigo,
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppConstants.kSpaceSM),
+                child: Divider(color: AppColors.kGlassBorder),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Total', style: AppTextStyles.kHeading3),
+                  Text(
+                    subtotal.toCurrency(),
+                    style: AppTextStyles.kHeading2.copyWith(
+                      color: AppColors.kAccentIndigo,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.kSpaceLG),
-            PrimaryButton(
-              label: 'Proceed to Checkout',
-              icon: Icons.payment,
-              onPressed: () => context.push('/cart/checkout'),
-            ),
-          ],
+                ],
+              ),
+              const SizedBox(height: AppConstants.kSpaceLG),
+              PrimaryButton(
+                label: 'Proceed to Checkout',
+                icon: Icons.payment,
+                onPressed: () => context.push('/cart/checkout'),
+              ),
+            ],
+          ),
         ),
       ),
     ).animate().slideY(

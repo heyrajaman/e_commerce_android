@@ -181,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               isLoading: isUpdating,
               message: 'Updating Profile...',
               child: SingleChildScrollView(
-                padding: responsivePad,
+                padding: responsivePad.copyWith(bottom: 100),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
@@ -189,15 +189,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         _buildProfileHeader(user),
                         const SizedBox(height: AppConstants.kSpaceXL),
-
                         _buildEditProfileForm(user),
                         const SizedBox(height: AppConstants.kSpaceLG),
-
                         _buildChangePasswordSection(),
                         const SizedBox(height: AppConstants.kSpaceXL),
-
                         _buildMenuItems(context),
-                        const SizedBox(height: AppConstants.kSpaceXXL),
                       ],
                     ),
                   ),

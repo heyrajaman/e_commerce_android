@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/size_config.dart';
+import '../../features/cart/presentation/bloc/cart_bloc.dart';
+import '../../features/cart/presentation/bloc/cart_event.dart';
 import '../../features/profile/presentation/bloc/profile_bloc.dart';
 import '../../features/profile/presentation/bloc/profile_event.dart';
 import '../widgets/adaptive_layout_widget.dart';
@@ -45,6 +47,10 @@ class MainLayoutScreen extends StatelessWidget {
       onDestinationSelected: (index) {
         if (index == 3) {
           context.read<ProfileBloc>().add(const ProfileFetchRequested());
+        }
+
+        if (index == 2) {
+          context.read<CartBloc>().add(const CartFetchRequested());
         }
 
         navigationShell.goBranch(

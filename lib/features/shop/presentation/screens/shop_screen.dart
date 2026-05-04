@@ -363,9 +363,7 @@ class _ShopScreenState extends State<ShopScreen> {
                         }
 
                         return Padding(
-                          padding: responsivePad.copyWith(
-                            bottom: AppConstants.kSpaceXXL,
-                          ),
+                          padding: responsivePad.copyWith(bottom: 100),
                           child: ResponsiveGridView(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),

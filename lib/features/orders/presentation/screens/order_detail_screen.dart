@@ -351,27 +351,59 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         PrimaryButton(
                           label: 'Order Again',
                           icon: Icons.replay_rounded,
-                          onPressed: () {
-                            for (var item in order!.items) {
-                              context.read<CartBloc>().add(
-                                CartItemAdded(
-                                  productId: item.productId,
-                                  quantity: item.quantity,
-                                ),
+                          onPressed: () async {
+                            final cartBloc = context.read<CartBloc>();
+                            final messenger = ScaffoldMessenger.of(context);
+                            final router = GoRouter.of(context);
+
+                            try {
+                              // 1. Clear cart
+                              cartBloc.add(const CartCleared());
+                              await Future.delayed(
+                                const Duration(milliseconds: 300),
                               );
+
+                              if (!mounted) return;
+
+                              // 2. Add items
+                              for (var item in order!.items) {
+                                cartBloc.add(
+                                  CartItemAdded(
+                                    productId: item.productId,
+                                    quantity: item.quantity,
+                                  ),
+                                );
+                                // Give the Bloc a moment to process each addition
+                                await Future.delayed(
+                                  const Duration(milliseconds: 100),
+                                );
+                              }
+
+                              // 3. Navigate
+                              if (mounted) {
+                                cartBloc.add(const CartFetchRequested());
+                                router.go('/cart');
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Cart reset with items from this order!',
+                                    ),
+                                    backgroundColor: AppColors.kAccentIndigo,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Error reordering items'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             }
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Items added to your cart!'),
-                                backgroundColor: AppColors.kAccentIndigo,
-                              ),
-                            );
-
-                            context.go('/cart');
                           },
                         ).animate().fadeIn(delay: 400.ms),
-
                         const SizedBox(height: AppConstants.kSpaceMD),
 
                         // --- Cancel Action (Only for 1 item orders) ---

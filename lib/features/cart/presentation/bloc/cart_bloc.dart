@@ -47,8 +47,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) async {
     final currentCart = _getCurrentCart();
 
-    // Show updating state so the user doesn't lose their current view
-    if (currentCart != null) {
+    if (currentCart != null && state is! CartLoading) {
       final updatedItems = List<CartItemModel>.from(currentCart.items);
       final existingIndex = updatedItems.indexWhere(
         (item) => item.productId == event.productId,
@@ -63,10 +62,9 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         updatedItems.add(
           CartItemModel(
             id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-            // Temporary fake ID
             productId: event.productId,
             quantity: event.quantity,
-            name: 'Updating...',
+            name: 'Adding...',
             price: 0.0,
             image: '',
             stock: 99,
@@ -74,7 +72,6 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           ),
         );
       }
-
       emit(CartUpdating(currentCart.copyWith(items: updatedItems)));
     } else {
       emit(const CartLoading());
@@ -88,11 +85,13 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
       emit(CartLoaded(updatedCart));
 
-      Fluttertoast.showToast(
-        msg: "Item added to cart",
-        backgroundColor: Colors.green.shade600,
-        textColor: Colors.white,
-      );
+      if (event.quantity > 0) {
+        Fluttertoast.showToast(
+          msg: "Item added to cart",
+          backgroundColor: Colors.green.shade600,
+          textColor: Colors.white,
+        );
+      }
     } catch (e) {
       // Revert to old cart if it fails
       if (currentCart != null) {
@@ -177,20 +176,14 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     CartCleared event,
     Emitter<CartState> emit,
   ) async {
-    final currentCart = _getCurrentCart();
-    if (currentCart != null) emit(CartUpdating(currentCart));
+    emit(const CartLoading());
 
     try {
       await _cartRepository.clearCart();
       // Emit an empty cart on success
       emit(const CartLoaded(CartModel(items: [])));
     } catch (e) {
-      if (currentCart != null) emit(CartLoaded(currentCart));
-      Fluttertoast.showToast(
-        msg: "Failed to clear cart",
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
+      emit(CartError(e.toString()));
     }
   }
 
