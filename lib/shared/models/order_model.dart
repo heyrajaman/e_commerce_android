@@ -10,20 +10,21 @@ enum OrderStatus {
 
   // Helper to parse from JSON string
   static OrderStatus fromString(String status) {
-    switch (status.toLowerCase()) {
-      case 'confirmed':
+    switch (status.toUpperCase()) {
+      case 'PACKED':
         return OrderStatus.confirmed;
-      case 'shipped':
+      case 'OUT_FOR_DELIVERY':
         return OrderStatus.shipped;
-      case 'delivered':
+      case 'DELIVERED':
         return OrderStatus.delivered;
-      case 'cancelled':
+      case 'CANCELLED':
+      case 'PARTIALLY_CANCELLED':
         return OrderStatus.cancelled;
-      case 'returned':
-      case 'return requested':
-      case 'return_requested':
-        return OrderStatus.returned; // 🟢 Maps all backend return statuses here
-      case 'pending':
+      case 'RETURN_REQUESTED':
+      case 'RETURNED':
+        return OrderStatus.returned;
+      case 'PROCESSING':
+      case 'PENDING':
       default:
         return OrderStatus.pending;
     }
@@ -39,7 +40,6 @@ class ShippingAddressModel extends Equatable {
   final String? addressLine2;
   final String city;
   final String state;
-  final String pincode;
 
   const ShippingAddressModel({
     required this.fullName,
@@ -48,7 +48,6 @@ class ShippingAddressModel extends Equatable {
     this.addressLine2,
     required this.city,
     required this.state,
-    required this.pincode,
   });
 
   factory ShippingAddressModel.fromJson(Map<String, dynamic> json) {
@@ -60,7 +59,6 @@ class ShippingAddressModel extends Equatable {
       addressLine2: json['addressLine2']?.toString(),
       city: json['city']?.toString() ?? '',
       state: json['state']?.toString() ?? '',
-      pincode: json['pincode']?.toString() ?? '',
     );
   }
 
@@ -72,7 +70,6 @@ class ShippingAddressModel extends Equatable {
       'addressLine2': addressLine2,
       'city': city,
       'state': state,
-      'pincode': pincode,
     };
   }
 
@@ -84,11 +81,11 @@ class ShippingAddressModel extends Equatable {
     addressLine2,
     city,
     state,
-    pincode,
   ];
 }
 
 class OrderItemModel extends Equatable {
+  final String itemId;
   final String productId;
   final String name;
   final String image;
@@ -96,6 +93,7 @@ class OrderItemModel extends Equatable {
   final int quantity;
 
   const OrderItemModel({
+    required this.itemId,
     required this.productId,
     required this.name,
     required this.image,
@@ -105,6 +103,7 @@ class OrderItemModel extends Equatable {
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     return OrderItemModel(
+      itemId: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       productId:
           json['productId']?.toString() ?? json['product']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
@@ -116,6 +115,7 @@ class OrderItemModel extends Equatable {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': itemId,
       'productId': productId,
       'name': name,
       'image': image,
@@ -125,7 +125,7 @@ class OrderItemModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [productId, name, image, price, quantity];
+  List<Object?> get props => [itemId, productId, name, image, price, quantity];
 }
 
 class OrderModel extends Equatable {
@@ -134,6 +134,7 @@ class OrderModel extends Equatable {
   final ShippingAddressModel shippingAddress;
   final String paymentMethod;
   final double totalAmount;
+  final double shippingCharge;
   final OrderStatus status;
   final DateTime createdAt;
   final String? trackingInfo;
@@ -144,6 +145,7 @@ class OrderModel extends Equatable {
     required this.shippingAddress,
     required this.paymentMethod,
     required this.totalAmount,
+    required this.shippingCharge,
     required this.status,
     required this.createdAt,
     this.trackingInfo,
@@ -164,6 +166,7 @@ class OrderModel extends Equatable {
       ),
       paymentMethod: json['paymentMethod']?.toString() ?? 'COD',
       totalAmount: (json['totalAmount'] ?? json['amount'] ?? 0).toDouble(),
+      shippingCharge: (json['shippingCharge'] ?? 0).toDouble(),
       status: OrderStatus.fromString(json['status']?.toString() ?? 'pending'),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
@@ -179,6 +182,7 @@ class OrderModel extends Equatable {
       'shippingAddress': shippingAddress.toJson(),
       'paymentMethod': paymentMethod,
       'totalAmount': totalAmount,
+      'shippingCharge': shippingCharge,
       'status': status.toJsonString(),
       'createdAt': createdAt.toIso8601String(),
       'trackingInfo': trackingInfo,
@@ -192,6 +196,7 @@ class OrderModel extends Equatable {
     shippingAddress,
     paymentMethod,
     totalAmount,
+    shippingCharge,
     status,
     createdAt,
     trackingInfo,

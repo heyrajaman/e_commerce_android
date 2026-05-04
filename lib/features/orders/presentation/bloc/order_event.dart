@@ -36,11 +36,23 @@ class OrderTrackRequested extends OrderEvent {
 
 class OrderCancelRequested extends OrderEvent {
   final String orderId;
+  final String reason;
 
-  const OrderCancelRequested(this.orderId);
+  const OrderCancelRequested(this.orderId, this.reason);
 
   @override
-  List<Object?> get props => [orderId];
+  List<Object?> get props => [orderId, reason];
+}
+
+class OrderItemCancelRequested extends OrderEvent {
+  final String orderId;
+  final String itemId;
+  final String reason;
+
+  const OrderItemCancelRequested(this.orderId, this.itemId, this.reason);
+
+  @override
+  List<Object> get props => [orderId, itemId, reason];
 }
 
 class OrdersRefreshRequested extends OrderEvent {

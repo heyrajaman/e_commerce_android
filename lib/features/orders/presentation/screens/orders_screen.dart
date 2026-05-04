@@ -225,16 +225,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 return OrderCardWidget(
                                   order: order,
                                   onTap: () {
-                                    // 🟢 Navigate and refresh list upon return
-                                    context.push('/orders/${order.id}').then((
-                                      _,
-                                    ) {
-                                      if (context.mounted) {
-                                        context.read<OrderBloc>().add(
-                                          const OrdersFetchRequested(),
-                                        );
-                                      }
-                                    });
+                                    context.push('/orders/${order.id}');
                                   },
                                 );
                               },

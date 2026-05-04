@@ -78,7 +78,10 @@ Future<void> initDependencies() async {
     () => OrderRepository(apiClient: sl<ApiClient>()),
   );
   sl.registerLazySingleton<OrderBloc>(
-    () => OrderBloc(orderRepository: sl<OrderRepository>()),
+    () => OrderBloc(
+      orderRepository: sl<OrderRepository>(),
+      productRepository: sl<ProductRepository>(),
+    ),
   );
 
   // 2. Features - Profile (NEW)

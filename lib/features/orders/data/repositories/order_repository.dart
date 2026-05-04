@@ -69,13 +69,36 @@ class OrderRepository {
     }
   }
 
-  Future<void> cancelOrder(String id) async {
+  Future<void> cancelOrder(String id, String reason) async {
     try {
-      await _apiClient.dio.put(ApiEndpoints.cancelOrder(id));
+      // Pass the reason in the request body
+      await _apiClient.dio.put(
+        ApiEndpoints.cancelOrder(id),
+        data: {'reason': reason},
+      );
     } on DioException catch (e) {
       throw e.error is Exception
           ? e.error as Exception
           : ServerException(e.message ?? 'Failed to cancel order');
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  Future<void> cancelOrderItem(
+    String orderId,
+    String itemId,
+    String reason,
+  ) async {
+    try {
+      await _apiClient.dio.put(
+        ApiEndpoints.cancelOrderItem(orderId, itemId),
+        data: {'reason': reason},
+      );
+    } on DioException catch (e) {
+      throw e.error is Exception
+          ? e.error as Exception
+          : ServerException(e.message ?? 'Failed to cancel item');
     } catch (e) {
       throw ServerException(e.toString());
     }
