@@ -21,50 +21,47 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      // Make the actual AppBar background transparent
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: centerTitle,
-
-      // Inject the Glassmorphism effect behind the AppBar content
-      flexibleSpace: const GlassContainer(
-        borderRadius: 0, // Flat against the top of the screen
-        child: SizedBox.expand(),
-      ),
-
-      title: Text(
-        title,
-        style: AppTextStyles.kHeading3.copyWith(
-          color: AppColors.kTextPrimary,
+    return Container(
+      // 🟢 This ensures the GlassContainer extends behind the status bar
+      color: Colors.transparent,
+      child: GlassContainer(
+        borderRadius: 0, // 🟢 FIX: Set to 0 to make it full horizontal width
+        padding: EdgeInsets.zero,
+        child: AppBar(
+          // Make the actual AppBar background transparent
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: centerTitle,
+          title: Text(
+            title,
+            style: AppTextStyles.kHeading3.copyWith(
+              color: AppColors.kTextPrimary,
+            ),
+          ),
+          leading: showBackButton
+              ? IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.kTextPrimary,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/home');
+                    }
+                  },
+                )
+              : null,
+          actions: actions,
         ),
       ),
-
-      // Standardized GoRouter back button
-      leading: showBackButton
-          ? IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          color: AppColors.kTextPrimary,
-          size: 20,
-        ),
-        onPressed: () {
-          // canPop safely checks if there's a screen to go back to
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            // Fallback for deeply nested shell routes
-            context.go('/home');
-          }
-        },
-      )
-          : null,
-
-      actions: actions,
     );
   }
 
-  // Required by PreferredSizeWidget to let the Scaffold know the height
+  // Use the standard height since we are no longer "floating"
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

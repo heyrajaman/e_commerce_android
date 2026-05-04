@@ -41,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
 
   bool _isPasswordSectionExpanded = false;
+  bool _isEmailEditable = false; // 🟢 Tracks if the user clicked "Edit"
 
   @override
   void initState() {
@@ -69,7 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       context.read<ProfileBloc>().add(
         ProfileUpdateRequested(
-          email: email ?? fallbackEmail ?? '', // Sending email now
+          email: email ?? fallbackEmail ?? '',
           imageFile: File(image.path),
         ),
       );
@@ -80,8 +81,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_profileFormKey.currentState?.saveAndValidate() ?? false) {
       final values = _profileFormKey.currentState!.value;
       context.read<ProfileBloc>().add(
-        ProfileUpdateRequested(email: values['email']), // Sending email now
+        ProfileUpdateRequested(email: values['email']),
       );
+      // Disable editing mode after saving
+      setState(() => _isEmailEditable = false);
     }
   }
 
@@ -130,16 +133,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Dynamic padding ensures it breathes well on tablets
     final responsivePad = ResponsiveHelper.responsivePadding(context);
 
     return MeshGradientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: const CustomAppBar(
-          title: 'My Profile',
-          showBackButton: false, // Root tab, no back button needed
-        ),
+        appBar: const CustomAppBar(title: 'My Profile', showBackButton: false),
         body: BlocConsumer<ProfileBloc, ProfileState>(
           listener: (context, state) {
             if (state is ProfilePasswordChangeSuccess) {
@@ -178,14 +177,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             if (user == null) return const SizedBox.shrink();
 
-            // Using our new unified LoadingOverlay Widget
             return LoadingOverlay(
               isLoading: isUpdating,
               message: 'Updating Profile...',
               child: SingleChildScrollView(
                 padding: responsivePad,
                 child: Center(
-                  // ConstrainedBox ensures the profile form doesn't stretch infinitely on wide desktop screens
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
                     child: Column(
@@ -229,7 +226,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: ClipOval(
                   child: user.profilePic != null && user.profilePic!.isNotEmpty
                       ? CachedNetworkImage(
-                          // CRITICAL FIX: Sanitize the URL here!
                           imageUrl: AppConfig.sanitizeImageUrl(
                             user.profilePic!,
                           ),
@@ -276,7 +272,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             delay: const Duration(milliseconds: 100),
             curve: Curves.easeOutBack,
           ),
-
           const SizedBox(height: AppConstants.kSpaceMD),
           Text(
             user.name,
@@ -294,140 +289,193 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildEditProfileForm(UserModel user) {
+    // 🟢 Dynamic validation: Check if email is both typed and different from original
+    final currentEmail =
+        _profileFormKey.currentState?.fields['email']?.value as String? ??
+        user.email;
+    final isEmailChanged =
+        currentEmail.trim() != user.email.trim() &&
+        currentEmail.trim().isNotEmpty;
+
     return GlassContainer(
-          padding: const EdgeInsets.all(AppConstants.kSpaceLG),
-          child: FormBuilder(
-            key: _profileFormKey,
-            // CRITICAL FIX: Add email to initial values
-            initialValue: {
-              'name': user.name,
-              'phone': user.phone,
-              'email': user.email,
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(AppConstants.kSpaceLG),
+      child: FormBuilder(
+        key: _profileFormKey,
+        initialValue: {
+          'name': user.name,
+          'phone': user.phone,
+          'email': user.email,
+        },
+        // 🟢 Rebuild UI on every keystroke so the Save button updates live
+        onChanged: () => setState(() {}),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 🟢 Header with Toggleable Edit/Cancel Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Personal Information', style: AppTextStyles.kHeading3),
-                const SizedBox(height: AppConstants.kSpaceLG),
-
-                // CRITICAL FIX: Make Name read-only
-                CustomTextField(
-                  name: 'name',
-                  label: 'Full Name',
-                  readOnly: true, // Prevents editing
-                ),
-                const SizedBox(height: AppConstants.kSpaceMD),
-
-                // CRITICAL FIX: Make Phone read-only
-                CustomTextField(
-                  name: 'phone',
-                  label: 'Phone Number',
-                  readOnly: true, // Prevents editing
-                ),
-                const SizedBox(height: AppConstants.kSpaceMD),
-
-                // CRITICAL FIX: Add Editable Email field
-                CustomTextField(
-                  name: 'email',
-                  label: 'Email Address',
-                  keyboardType: TextInputType.emailAddress,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.email(),
-                  ]),
-                ),
-                const SizedBox(height: AppConstants.kSpaceLG),
-
-                PrimaryButton(label: 'Save Changes', onPressed: _saveProfile),
-              ],
-            ),
-          ),
-        )
-        .animate()
-        .fadeIn(delay: const Duration(milliseconds: 400))
-        .slideY(begin: 0.1);
-  }
-
-  Widget _buildChangePasswordSection() {
-    return GlassContainer(
-          padding: const EdgeInsets.all(AppConstants.kSpaceLG),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: () => setState(
-                  () =>
-                      _isPasswordSectionExpanded = !_isPasswordSectionExpanded,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Change Password', style: AppTextStyles.kHeading3),
-                    Icon(
-                      _isPasswordSectionExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: AppColors.kTextPrimary,
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isEmailEditable = !_isEmailEditable;
+                      // If user cancels, reset the field to original email
+                      if (!_isEmailEditable) {
+                        _profileFormKey.currentState?.fields['email']
+                            ?.didChange(user.email);
+                      }
+                    });
+                  },
+                  icon: Icon(
+                    _isEmailEditable ? Icons.close : Icons.edit,
+                    size: 16,
+                    color: AppColors.kAccentIndigo,
+                  ),
+                  label: Text(
+                    _isEmailEditable ? 'Cancel' : 'Edit',
+                    style: AppTextStyles.kBodyMedium.copyWith(
+                      color: AppColors.kAccentIndigo,
                     ),
-                  ],
-                ),
-              ),
-
-              if (_isPasswordSectionExpanded) ...[
-                const SizedBox(height: AppConstants.kSpaceLG),
-                FormBuilder(
-                  key: _passwordFormKey,
-                  child: Column(
-                    children: [
-                      CustomTextField(
-                        name: 'oldPassword',
-                        label: 'Current Password',
-                        isPassword: true,
-                        validator: FormBuilderValidators.required(
-                          errorText: 'Required',
-                        ),
-                      ),
-                      const SizedBox(height: AppConstants.kSpaceMD),
-                      CustomTextField(
-                        name: 'newPassword',
-                        label: 'New Password',
-                        isPassword: true,
-                        validator:
-                            AppValidators.password(), // Upgraded to AppValidators
-                      ),
-                      const SizedBox(height: AppConstants.kSpaceMD),
-                      CustomTextField(
-                        name: 'confirmNewPassword',
-                        label: 'Confirm New Password',
-                        isPassword: true,
-                        validator: (val) {
-                          if (val == null || val.isEmpty) return 'Required';
-                          if (val !=
-                              _passwordFormKey
-                                  .currentState
-                                  ?.fields['newPassword']
-                                  ?.value) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: AppConstants.kSpaceLG),
-                      PrimaryButton(
-                        label: 'Update Password',
-                        backgroundColor: AppColors.kAccentPink,
-                        onPressed: _changePassword,
-                      ),
-                    ],
                   ),
                 ),
               ],
-            ],
+            ),
+            const SizedBox(height: AppConstants.kSpaceMD),
+
+            CustomTextField(name: 'name', label: 'Full Name', readOnly: true),
+            const SizedBox(height: AppConstants.kSpaceMD),
+
+            CustomTextField(
+              name: 'phone',
+              label: 'Phone Number',
+              readOnly: true,
+            ),
+            const SizedBox(height: AppConstants.kSpaceMD),
+
+            CustomTextField(
+              name: 'email',
+              label: 'Email Address',
+              keyboardType: TextInputType.emailAddress,
+              readOnly: !_isEmailEditable,
+              // 🟢 Editable only when toggled
+              validator: FormBuilderValidators.compose([
+                FormBuilderValidators.required(),
+                FormBuilderValidators.email(),
+              ]),
+            ),
+            const SizedBox(height: AppConstants.kSpaceLG),
+
+            // 🟢 Button is completely disabled (null) unless email is actively changed
+            PrimaryButton(
+              label: 'Save Changes',
+              onPressed: isEmailChanged ? _saveProfile : null,
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: const Duration(milliseconds: 400)).slideY(begin: 0.1);
+  }
+
+  Widget _buildChangePasswordSection() {
+    // 🟢 Dynamic validation for password button
+    final oldPw =
+        _passwordFormKey.currentState?.fields['oldPassword']?.value
+            as String? ??
+        '';
+    final newPw =
+        _passwordFormKey.currentState?.fields['newPassword']?.value
+            as String? ??
+        '';
+    final confirmPw =
+        _passwordFormKey.currentState?.fields['confirmNewPassword']?.value
+            as String? ??
+        '';
+
+    // Valid if all exist and new matches confirm
+    final isPasswordReady =
+        oldPw.isNotEmpty &&
+        newPw.isNotEmpty &&
+        confirmPw.isNotEmpty &&
+        (newPw == confirmPw);
+
+    return GlassContainer(
+      padding: const EdgeInsets.all(AppConstants.kSpaceLG),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => setState(
+              () => _isPasswordSectionExpanded = !_isPasswordSectionExpanded,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Change Password', style: AppTextStyles.kHeading3),
+                Icon(
+                  _isPasswordSectionExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: AppColors.kTextPrimary,
+                ),
+              ],
+            ),
           ),
-        )
-        .animate()
-        .fadeIn(delay: const Duration(milliseconds: 500))
-        .slideY(begin: 0.1);
+
+          if (_isPasswordSectionExpanded) ...[
+            const SizedBox(height: AppConstants.kSpaceLG),
+            FormBuilder(
+              key: _passwordFormKey,
+              // 🟢 Rebuild UI on every keystroke to evaluate password match
+              onChanged: () => setState(() {}),
+              child: Column(
+                children: [
+                  CustomTextField(
+                    name: 'oldPassword',
+                    label: 'Current Password',
+                    isPassword: true,
+                    validator: FormBuilderValidators.required(
+                      errorText: 'Required',
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.kSpaceMD),
+                  CustomTextField(
+                    name: 'newPassword',
+                    label: 'New Password',
+                    isPassword: true,
+                    validator: AppValidators.password(),
+                  ),
+                  const SizedBox(height: AppConstants.kSpaceMD),
+                  CustomTextField(
+                    name: 'confirmNewPassword',
+                    label: 'Confirm New Password',
+                    isPassword: true,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Required';
+                      if (val !=
+                          _passwordFormKey
+                              .currentState
+                              ?.fields['newPassword']
+                              ?.value) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppConstants.kSpaceLG),
+                  // 🟢 Button is completely disabled (null) unless all inputs are valid
+                  PrimaryButton(
+                    label: 'Update Password',
+                    backgroundColor: AppColors.kAccentPink,
+                    onPressed: isPasswordReady ? _changePassword : null,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(delay: const Duration(milliseconds: 500)).slideY(begin: 0.1);
   }
 
   Widget _buildMenuItems(BuildContext context) {
@@ -452,29 +500,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 });
               },
             ),
-            const SizedBox(height: AppConstants.kSpaceMD),
-            _buildMenuCard(
-              icon: Icons.notifications_none_outlined,
-              title: 'Notifications',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Notifications coming soon!')),
-                );
-              },
-            ),
-            const SizedBox(height: AppConstants.kSpaceMD),
-            _buildMenuCard(
-              icon: Icons.info_outline,
-              title: 'About App',
-              onTap: () {
-                showAboutDialog(
-                  context: context,
-                  applicationName: 'E-Commerce App',
-                  applicationVersion: '1.0.0',
-                  applicationIcon: const FlutterLogo(size: 40),
-                );
-              },
-            ),
+            // 🟢 Notifications and About App Removed as requested!
             const SizedBox(height: AppConstants.kSpaceMD),
             _buildMenuCard(
               icon: Icons.logout,

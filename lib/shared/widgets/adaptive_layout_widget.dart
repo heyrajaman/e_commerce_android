@@ -4,7 +4,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/responsive_helper.dart';
 import 'glass_container.dart';
 
-// 1. UPDATED: Changed IconData to Widget to support custom badges
 class AdaptiveDestination {
   final String label;
   final Widget icon;
@@ -53,6 +52,8 @@ class AdaptiveScaffold extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      extendBody: true,
+      extendBodyBehindAppBar: true,
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         switchInCurve: Curves.easeOut,
@@ -63,41 +64,100 @@ class AdaptiveScaffold extends StatelessWidget {
   }
 
   Widget _buildMobilePortrait(BuildContext context) {
-    return Column(
+    return Stack(
       key: const ValueKey('mobile_portrait'),
       children: [
-        Expanded(child: body),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 16.0,
-              right: 16.0,
-              bottom: 16.0,
-            ),
-            child: GlassContainer(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              borderRadius: 30,
-              child: Theme(
-                data: Theme.of(context).copyWith(
-                  splashColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
+        Positioned.fill(child: body),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 16.0,
+                right: 16.0,
+                bottom: 16.0,
+              ),
+              child: GlassContainer(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                borderRadius: 30,
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                  ),
+                  child: BottomNavigationBar(
+                    elevation: 0,
+                    backgroundColor: Colors.transparent,
+                    type: BottomNavigationBarType.fixed,
+                    selectedItemColor: AppColors.kAccentIndigo,
+                    unselectedItemColor: AppColors.kTextSecondary,
+                    currentIndex: selectedIndex,
+                    onTap: onDestinationSelected,
+                    showSelectedLabels: true,
+                    showUnselectedLabels: true,
+                    selectedFontSize: 12,
+                    unselectedFontSize: 12,
+                    selectedLabelStyle: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      height: 1.5, // Added line height for spacing
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      height: 1.5,
+                    ),
+                    items: destinations.map((d) {
+                      return BottomNavigationBarItem(
+                        icon: d.icon,
+                        activeIcon: d.activeIcon,
+                        label: d.label,
+                      );
+                    }).toList(),
+                  ),
                 ),
-                child: BottomNavigationBar(
-                  elevation: 0,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLandscape(BuildContext context) {
+    return Stack(
+      key: const ValueKey('mobile_landscape'),
+      children: [
+        Positioned.fill(child: body),
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: SafeArea(
+            right: false,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: GlassContainer(
+                borderRadius: 20,
+                child: NavigationRail(
                   backgroundColor: Colors.transparent,
-                  type: BottomNavigationBarType.fixed,
-                  selectedItemColor: AppColors.kAccentIndigo,
-                  unselectedItemColor: AppColors.kTextSecondary,
-                  currentIndex: selectedIndex,
-                  onTap: onDestinationSelected,
-                  items: destinations.map((d) {
-                    return BottomNavigationBarItem(
+                  elevation: 0,
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: onDestinationSelected,
+                  labelType: NavigationRailLabelType.all,
+                  // 🟢 Show labels in landscape
+                  selectedIconTheme: const IconThemeData(
+                    color: AppColors.kAccentIndigo,
+                  ),
+                  unselectedIconTheme: const IconThemeData(
+                    color: AppColors.kTextSecondary,
+                  ),
+                  destinations: destinations.map((d) {
+                    return NavigationRailDestination(
                       icon: d.icon,
-                      // 2. UPDATED: Removed Icon() wrapper
-                      activeIcon: d.activeIcon,
-                      // 3. UPDATED: Removed Icon() wrapper
-                      label: d.label,
+                      selectedIcon: d.activeIcon,
+                      label: Text(d.label),
                     );
                   }).toList(),
                 ),
@@ -109,144 +169,115 @@ class AdaptiveScaffold extends StatelessWidget {
     );
   }
 
-  Widget _buildMobileLandscape(BuildContext context) {
-    return Row(
-      key: const ValueKey('mobile_landscape'),
-      children: [
-        SafeArea(
-          right: false,
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: GlassContainer(
-              borderRadius: 20,
-              child: NavigationRail(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                selectedIndex: selectedIndex,
-                onDestinationSelected: onDestinationSelected,
-                labelType: NavigationRailLabelType.none,
-                selectedIconTheme: const IconThemeData(
-                  color: AppColors.kAccentIndigo,
-                ),
-                unselectedIconTheme: const IconThemeData(
-                  color: AppColors.kTextSecondary,
-                ),
-                destinations: destinations.map((d) {
-                  return NavigationRailDestination(
-                    icon: d.icon, // 4. UPDATED
-                    selectedIcon: d.activeIcon, // 5. UPDATED
-                    label: Text(d.label),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-        ),
-        Expanded(child: body),
-      ],
-    );
-  }
-
   Widget _buildTabletPortrait(BuildContext context) {
-    return Row(
+    return Stack(
       key: const ValueKey('tablet_portrait'),
       children: [
-        SafeArea(
-          right: false,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: GlassContainer(
-              borderRadius: 24,
-              child: NavigationRail(
-                extended: true,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                minExtendedWidth: 160,
-                selectedIndex: selectedIndex,
-                onDestinationSelected: onDestinationSelected,
-                selectedIconTheme: const IconThemeData(
-                  color: AppColors.kAccentIndigo,
+        Positioned.fill(child: body),
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: SafeArea(
+            right: false,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: GlassContainer(
+                borderRadius: 24,
+                child: NavigationRail(
+                  extended: true,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  minExtendedWidth: 160,
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: onDestinationSelected,
+                  selectedIconTheme: const IconThemeData(
+                    color: AppColors.kAccentIndigo,
+                  ),
+                  unselectedIconTheme: const IconThemeData(
+                    color: AppColors.kTextSecondary,
+                  ),
+                  selectedLabelTextStyle: const TextStyle(
+                    color: AppColors.kAccentIndigo,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  unselectedLabelTextStyle: const TextStyle(
+                    color: AppColors.kTextSecondary,
+                  ),
+                  destinations: destinations.map((d) {
+                    return NavigationRailDestination(
+                      icon: d.icon,
+                      selectedIcon: d.activeIcon,
+                      label: Text(d.label),
+                    );
+                  }).toList(),
                 ),
-                unselectedIconTheme: const IconThemeData(
-                  color: AppColors.kTextSecondary,
-                ),
-                selectedLabelTextStyle: const TextStyle(
-                  color: AppColors.kAccentIndigo,
-                  fontWeight: FontWeight.bold,
-                ),
-                unselectedLabelTextStyle: const TextStyle(
-                  color: AppColors.kTextSecondary,
-                ),
-                destinations: destinations.map((d) {
-                  return NavigationRailDestination(
-                    icon: d.icon, // 6. UPDATED
-                    selectedIcon: d.activeIcon, // 7. UPDATED
-                    label: Text(d.label),
-                  );
-                }).toList(),
               ),
             ),
           ),
         ),
-        Expanded(child: body),
       ],
     );
   }
 
   Widget _buildTabletLandscape(BuildContext context) {
-    return Row(
+    return Stack(
       key: const ValueKey('tablet_landscape'),
       children: [
-        SafeArea(
-          right: false,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: GlassContainer(
-              borderRadius: 24,
-              child: SizedBox(
-                width: 240,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    const Icon(
-                      Icons.storefront,
-                      size: 48,
-                      color: AppColors.kAccentIndigo,
-                    ),
-                    const SizedBox(height: 40),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: destinations.length,
-                        itemBuilder: (context, index) {
-                          final isSelected = selectedIndex == index;
-                          final dest = destinations[index];
-                          return ListTile(
-                            leading: isSelected ? dest.activeIcon : dest.icon,
-                            // 8. UPDATED: No longer injecting color directly into the icon to avoid breaking CartBadgeWidget
-                            title: Text(
-                              dest.label,
-                              style: TextStyle(
-                                color: isSelected
-                                    ? AppColors.kAccentIndigo
-                                    : AppColors.kTextSecondary,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            selected: isSelected,
-                            onTap: () => onDestinationSelected(index),
-                          );
-                        },
+        Positioned.fill(child: body),
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: SafeArea(
+            right: false,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: GlassContainer(
+                borderRadius: 24,
+                child: SizedBox(
+                  width: 240,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 40),
+                      const Icon(
+                        Icons.storefront,
+                        size: 48,
+                        color: AppColors.kAccentIndigo,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 40),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: destinations.length,
+                          itemBuilder: (context, index) {
+                            final isSelected = selectedIndex == index;
+                            final dest = destinations[index];
+                            return ListTile(
+                              leading: isSelected ? dest.activeIcon : dest.icon,
+                              title: Text(
+                                dest.label,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? AppColors.kAccentIndigo
+                                      : AppColors.kTextSecondary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                              selected: isSelected,
+                              onTap: () => onDestinationSelected(index),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-        Expanded(child: body),
       ],
     );
   }

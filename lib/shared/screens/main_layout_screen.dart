@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart'; // Add this import
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/size_config.dart';
-import '../../features/profile/presentation/bloc/profile_bloc.dart'; // Add this import
+import '../../features/profile/presentation/bloc/profile_bloc.dart';
 import '../../features/profile/presentation/bloc/profile_event.dart';
 import '../widgets/adaptive_layout_widget.dart';
 import '../widgets/cart_badge_widget.dart';
@@ -30,8 +30,8 @@ class MainLayoutScreen extends StatelessWidget {
       ),
       AdaptiveDestination(
         label: 'Cart',
-        icon: CartBadgeWidget(onTap: () {}),
-        activeIcon: CartBadgeWidget(onTap: () {}),
+        icon: IgnorePointer(child: CartBadgeWidget(onTap: () {})),
+        activeIcon: IgnorePointer(child: CartBadgeWidget(onTap: () {})),
       ),
       const AdaptiveDestination(
         label: 'Profile',

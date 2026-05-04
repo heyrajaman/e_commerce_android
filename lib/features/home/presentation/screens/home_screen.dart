@@ -10,6 +10,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_constants.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/responsive_helper.dart';
+import '../../../../shared/models/product_model.dart';
 import '../../../../shared/widgets/cart_badge_widget.dart';
 import '../../../../shared/widgets/category_chip_widget.dart';
 import '../../../../shared/widgets/custom_app_bar_widget.dart';
@@ -89,22 +90,25 @@ class _HomeScreenState extends State<HomeScreen> {
     // Dynamically grab horizontal padding based on screen size
     final responsivePad = ResponsiveHelper.responsivePadding(context);
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: CustomAppBar(
-        title: 'Home',
-        showBackButton: false,
-        actions: [
-          // ✅ ADD THIS:
-          CartBadgeWidget(
-            onTap: () => context.push('/cart'),
-            iconColor: AppColors.kTextPrimary,
-          ),
-          const SizedBox(width: AppConstants.kSpaceMD),
-        ],
-      ),
-      body: MeshGradientBackground(
-        child: RefreshIndicator(
+    // Grid ratio ensuring the grid cards look identical to the horizontal scrolling cards
+    const double cardAspectRatio = 170 / 200;
+
+    // 🟢 FIX: MeshGradientBackground now wraps the entire Scaffold!
+    return MeshGradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: CustomAppBar(
+          title: 'Home',
+          showBackButton: false,
+          actions: [
+            CartBadgeWidget(
+              onTap: () => context.push('/cart'),
+              iconColor: AppColors.kTextPrimary,
+            ),
+            const SizedBox(width: AppConstants.kSpaceMD),
+          ],
+        ),
+        body: RefreshIndicator(
           color: AppColors.kAccentIndigo,
           onRefresh: _onRefresh,
           child: CustomScrollView(
@@ -124,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Good Morning,',
+                                'Welcome,',
                                 style: AppTextStyles.kBodyMedium.copyWith(
                                   color: AppColors.kTextSecondary,
                                 ),
@@ -204,82 +208,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ).animate().fadeIn(delay: const Duration(milliseconds: 200)),
               ),
 
-              // --- Featured Banner (Flipkart Style Horizontal Scroll) ---
-              SliverToBoxAdapter(
-                child: BlocBuilder<ProductBloc, ProductState>(
-                  builder: (context, state) {
-                    if (state is ProductsLoaded && state.products.isNotEmpty) {
-                      // Grab up to 5 featured products
-                      final featuredProducts = state.products.take(5).toList();
-
-                      return SizedBox(
-                        height: 200,
-                        child: ListView.separated(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: responsivePad.left,
-                          ),
-                          scrollDirection: Axis.horizontal,
-                          itemCount: featuredProducts.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(width: 18),
-                          itemBuilder: (context, index) {
-                            return SizedBox(
-                              width: 170,
-                              child: ProductCardWidget(
-                                product: featuredProducts[index],
-                                onTap: () => context.push(
-                                  '/shop/product/${featuredProducts[index].id}',
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ).animate().fadeIn(
-                        delay: const Duration(milliseconds: 300),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ),
-
-              // --- Section Title ---
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: responsivePad.left,
-                    vertical: AppConstants.kSpaceLG,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('New Arrivals', style: AppTextStyles.kHeading3),
-                      TextButton(
-                        onPressed: () => context.push('/shop'),
-                        child: Text(
-                          'View All',
-                          style: AppTextStyles.kButtonText.copyWith(
-                            color: AppColors.kAccentIndigo,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // --- Products Responsive Grid / State Handling ---
+              // --- Products Sections ---
               BlocBuilder<ProductBloc, ProductState>(
                 builder: (context, state) {
                   if (state is ProductsLoading && state is! ProductsLoaded) {
-                    // Shimmer Skeleton applied to ResponsiveGrid
                     return SliverToBoxAdapter(
                       child: Padding(
                         padding: responsivePad,
                         child: ResponsiveGridView(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          childAspectRatio: 0.65,
+                          childAspectRatio: cardAspectRatio,
                           crossAxisSpacing: 10.0,
                           mainAxisSpacing: 10.0,
                           items: List.generate(4, (index) => index),
@@ -289,7 +228,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   } else if (state is ProductError) {
-                    // Beautiful Error State
                     return SliverToBoxAdapter(
                       child: Padding(
                         padding: responsivePad,
@@ -303,7 +241,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   } else if (state is ProductsLoaded) {
                     if (state.products.isEmpty) {
-                      // Beautiful Empty State
                       return SliverToBoxAdapter(
                         child: EmptyStateWidget.noProducts(
                           onAction: () => context.read<ProductBloc>().add(
@@ -313,28 +250,123 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     }
 
-                    final gridProducts = state.products.skip(3).toList();
+                    // Check if the user is currently searching
+                    final bool isSearching =
+                        state.searchQuery != null &&
+                        state.searchQuery!.trim().isNotEmpty;
 
-                    // Responsive Grid integrated
-                    return SliverToBoxAdapter(
-                      child: Padding(
-                        padding: responsivePad,
-                        child: ResponsiveGridView(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          childAspectRatio: 0.65,
-                          crossAxisSpacing: 10.0,
-                          mainAxisSpacing: 10.0,
-                          items: gridProducts,
-                          itemBuilder: (context, index, product) {
-                            return ProductCardWidget(
-                              product: product, // dynamic casting
-                              onTap: () =>
-                                  context.push('/product/${product.id}'),
-                            );
-                          },
+                    // If they are searching, show ONLY the search results grid!
+                    if (isSearching) {
+                      return SliverList(
+                        delegate: SliverChildListDelegate([
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: responsivePad.left,
+                              vertical: AppConstants.kSpaceLG,
+                            ),
+                            child: Text(
+                              'Search Results',
+                              style: AppTextStyles.kHeading3,
+                            ),
+                          ),
+                          Padding(
+                            padding: responsivePad,
+                            child: ResponsiveGridView(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              childAspectRatio: cardAspectRatio,
+                              crossAxisSpacing: 10.0,
+                              mainAxisSpacing: 10.0,
+                              items: state.products,
+                              // Show all products matching the search
+                              itemBuilder: (context, index, product) {
+                                return ProductCardWidget(
+                                  product: product,
+                                  onTap: () =>
+                                      context.push('/product/${product.id}'),
+                                );
+                              },
+                            ),
+                          ),
+                        ]),
+                      );
+                    }
+
+                    // If they are NOT searching, show the normal beautiful Home sections!
+                    final newArrivalProducts = state.products;
+                    final featuredProducts = state.products.length > 5
+                        ? state.products.skip(5).take(5).toList()
+                        : state.products.take(5).toList();
+                    final recentProducts = state.products.reversed
+                        .take(5)
+                        .toList();
+
+                    return SliverList(
+                      delegate: SliverChildListDelegate([
+                        if (recentProducts.isNotEmpty)
+                          _buildHorizontalSection(
+                            context: context,
+                            title: 'Recently Viewed',
+                            products: recentProducts,
+                            responsivePad: responsivePad,
+                          ),
+
+                        if (recentProducts.isNotEmpty &&
+                            featuredProducts.isNotEmpty)
+                          const SizedBox(height: AppConstants.kSpaceMD),
+
+                        if (featuredProducts.isNotEmpty)
+                          _buildHorizontalSection(
+                            context: context,
+                            title: 'Featured Collections',
+                            products: featuredProducts,
+                            responsivePad: responsivePad,
+                          ),
+
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: responsivePad.left,
+                            vertical: AppConstants.kSpaceLG,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'New Arrivals',
+                                style: AppTextStyles.kHeading3,
+                              ),
+                              TextButton(
+                                onPressed: () => context.push('/shop'),
+                                child: Text(
+                                  'View All',
+                                  style: AppTextStyles.kButtonText.copyWith(
+                                    color: AppColors.kAccentIndigo,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+
+                        Padding(
+                          padding: responsivePad,
+                          child: ResponsiveGridView(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio: cardAspectRatio,
+                            crossAxisSpacing: 10.0,
+                            mainAxisSpacing: 10.0,
+                            items: newArrivalProducts,
+                            itemBuilder: (context, index, product) {
+                              return ProductCardWidget(
+                                product: product,
+                                onTap: () =>
+                                    context.push('/product/${product.id}'),
+                              );
+                            },
+                          ),
+                        ),
+                      ]),
                     );
                   }
                   return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -349,5 +381,59 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  // --- Helper Method for Horizontal Rows ---
+  Widget _buildHorizontalSection({
+    required BuildContext context,
+    required String title,
+    required List<ProductModel> products,
+    required EdgeInsets responsivePad,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: responsivePad.left,
+            vertical: AppConstants.kSpaceSM,
+          ).copyWith(top: AppConstants.kSpaceLG),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: AppTextStyles.kHeading3),
+              TextButton(
+                onPressed: () => context.push('/shop'),
+                child: Text(
+                  'View All',
+                  style: AppTextStyles.kButtonText.copyWith(
+                    color: AppColors.kAccentIndigo,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 200,
+          child: ListView.separated(
+            padding: EdgeInsets.symmetric(horizontal: responsivePad.left),
+            scrollDirection: Axis.horizontal,
+            itemCount: products.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 18),
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return SizedBox(
+                width: 170,
+                child: ProductCardWidget(
+                  product: product,
+                  onTap: () => context.push('/shop/product/${product.id}'),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    ).animate().fadeIn(delay: const Duration(milliseconds: 300));
   }
 }
