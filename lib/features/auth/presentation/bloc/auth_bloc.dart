@@ -19,6 +19,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
+    on<AuthDeliveryLoginRequested>(_onDeliveryLoginRequested);
   }
 
   Future<void> _onCheckStatusRequested(
@@ -89,6 +90,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } finally {
       await _storageService.clearAll();
       emit(const AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onDeliveryLoginRequested(
+    AuthDeliveryLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      final user = await _authRepository.loginDeliveryBoy(
+        event.phone,
+        event.password,
+      );
+      emit(AuthAuthenticated(user));
+    } catch (e) {
+      emit(AuthError(e.toString()));
     }
   }
 }

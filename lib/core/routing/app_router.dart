@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
+import '../../features/auth/presentation/screens/delivery_login_screen.dart'; // NEW
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/checkout/presentation/screens/checkout_screen.dart';
 import '../../features/checkout/presentation/screens/order_success_screen.dart';
+import '../../features/delivery/presentation/screens/delivery_dashboard_screen.dart'; // NEW
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/orders/presentation/screens/orders_screen.dart';
@@ -22,8 +24,6 @@ import '../../shared/widgets/mesh_gradient_background.dart';
 import '../theme/app_colors.dart';
 
 class AppRouter {
-  // We define a root navigator key so that screens like Product Details,
-  // Checkout, and Order Details can push full-screen over the bottom nav bar.
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
   static GoRouter createRouter(AuthBloc authBloc) {
@@ -33,9 +33,13 @@ class AppRouter {
       refreshListenable: GoRouterRefreshStream(authBloc.stream),
       redirect: (context, state) {
         final authState = authBloc.state;
+
+        // 1. ADDED /delivery-login to the auth routes check
         final isAuthRoute =
             state.matchedLocation == '/login' ||
-            state.matchedLocation == '/register';
+            state.matchedLocation == '/register' ||
+            state.matchedLocation == '/delivery-login';
+
         final isSplash = state.matchedLocation == '/';
 
         if (authState is AuthInitial ||
@@ -47,8 +51,28 @@ class AppRouter {
           return '/login';
         }
 
-        if (authState is AuthAuthenticated && (isAuthRoute || isSplash)) {
-          return '/home';
+        if (authState is AuthAuthenticated) {
+          final role = authState.user.role;
+          final isDeliveryBoy = role == 'delivery_boy';
+
+          // 2. Routing logic based on role when hitting splash or auth screens
+          if (isAuthRoute || isSplash) {
+            if (isDeliveryBoy) {
+              return '/delivery-dashboard'; // Route Delivery Boys here
+            } else {
+              return '/home'; // Route Customers here
+            }
+          }
+
+          // 3. Security: Prevent customers from accessing delivery routes and vice versa
+          final isGoingToDelivery = state.matchedLocation.startsWith(
+            '/delivery',
+          );
+          if (isDeliveryBoy && !isGoingToDelivery) {
+            return '/delivery-dashboard';
+          } else if (!isDeliveryBoy && isGoingToDelivery) {
+            return '/home';
+          }
         }
 
         return null;
@@ -71,13 +95,26 @@ class AppRouter {
           builder: (context, state) => const RegisterScreen(),
         ),
 
+        // --- NEW: Delivery Login Route ---
+        GoRoute(
+          path: '/delivery-login',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const DeliveryLoginScreen(),
+        ),
+
+        // --- NEW: Delivery Dashboard Route (Full Screen, bypasses bottom nav) ---
+        GoRoute(
+          path: '/delivery-dashboard',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const DeliveryDashboardScreen(),
+        ),
+
         // --- The Bottom Navigation Shell ---
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return MainLayoutScreen(navigationShell: navigationShell);
           },
           branches: [
-            // Branch 0: Home
             StatefulShellBranch(
               routes: [
                 GoRoute(
@@ -86,36 +123,29 @@ class AppRouter {
                 ),
               ],
             ),
-
-            // Branch 1: Shop
             StatefulShellBranch(
               routes: [
                 GoRoute(
                   path: '/shop',
                   builder: (context, state) => const ShopScreen(),
                   routes: [
-                    // Nested route pushed over the root navigator (hides bottom nav)
                     GoRoute(
                       path: 'product/:id',
                       parentNavigatorKey: _rootNavigatorKey,
-                      builder: (context, state) {
-                        final productId = state.pathParameters['id']!;
-                        return ProductDetailsScreen(productId: productId);
-                      },
+                      builder: (context, state) => ProductDetailsScreen(
+                        productId: state.pathParameters['id']!,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-
-            // Branch 2: Cart
             StatefulShellBranch(
               routes: [
                 GoRoute(
                   path: '/cart',
                   builder: (context, state) => const CartScreen(),
                   routes: [
-                    // Checkout flow pushed over bottom nav
                     GoRoute(
                       path: 'checkout',
                       parentNavigatorKey: _rootNavigatorKey,
@@ -124,17 +154,14 @@ class AppRouter {
                     GoRoute(
                       path: 'order-success/:id',
                       parentNavigatorKey: _rootNavigatorKey,
-                      builder: (context, state) {
-                        final orderId = state.pathParameters['id']!;
-                        return OrderSuccessScreen(orderId: orderId);
-                      },
+                      builder: (context, state) => OrderSuccessScreen(
+                        orderId: state.pathParameters['id']!,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-
-            // Branch 3: Profile & Orders
             StatefulShellBranch(
               routes: [
                 GoRoute(
@@ -146,9 +173,7 @@ class AppRouter {
           ],
         ),
 
-        // --- Order Screens (Full Screen, pushed over bottom nav) ---
-        // Note: These are placed at the root level because we want them to
-        // cover the bottom navigation bar completely when navigating from Profile.
+        // --- Order & Profile Screens (Full Screen) ---
         GoRoute(
           path: '/orders',
           parentNavigatorKey: _rootNavigatorKey,
@@ -157,10 +182,8 @@ class AppRouter {
         GoRoute(
           path: '/orders/:id',
           parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) {
-            final orderId = state.pathParameters['id']!;
-            return OrderDetailScreen(orderId: orderId);
-          },
+          builder: (context, state) =>
+              OrderDetailScreen(orderId: state.pathParameters['id']!),
         ),
         GoRoute(
           path: '/addresses',

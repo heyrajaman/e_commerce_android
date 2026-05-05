@@ -121,4 +121,34 @@ class AuthRepository {
       throw ServerException(e.toString());
     }
   }
+
+  Future<UserModel> loginDeliveryBoy(String phone, String password) async {
+    try {
+      final response = await _apiClient.dio.post(
+        ApiEndpoints.deliveryLogin,
+        data: {'phone': phone, 'password': password},
+      );
+
+      final Map<String, dynamic> boyData = response.data['boy'];
+      final String token = response.data['token'];
+
+      await _storageService.saveToken(token);
+
+      // Inject the role so our Flutter state management knows how to route them
+      boyData['role'] = 'delivery_boy';
+      boyData['phone'] = phone;
+
+      final user = UserModel.fromJson(boyData);
+
+      // Save the user ID just like your regular login
+      await _storageService.saveUserId(user.id);
+
+      return user;
+    } on DioException catch (e) {
+      // Using your custom error extractor!
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
 }

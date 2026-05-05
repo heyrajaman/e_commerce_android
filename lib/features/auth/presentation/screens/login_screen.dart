@@ -228,6 +228,51 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ).animate().fadeIn(delay: const Duration(milliseconds: 400)),
+
+              const SizedBox(height: 24),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    context.push('/delivery-login');
+                  },
+                  icon: const Icon(
+                    Icons.local_shipping_outlined,
+                    color: Colors.deepOrangeAccent,
+                    // A distinct color for delivery
+                    size: 22,
+                  ),
+                  label: const Text(
+                    'Login as Delivery Partner',
+                    style: TextStyle(
+                      color: Colors.deepOrangeAccent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    backgroundColor: Colors.deepOrangeAccent.withValues(
+                      alpha: 0.05,
+                    ),
+                    // Soft tint
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      // Smooth rounded corners
+                      side: BorderSide(
+                        color: Colors.deepOrangeAccent.withValues(
+                          alpha: 0.3,
+                        ), // Subtle border
+                      ),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
             ],
           ),
         ),

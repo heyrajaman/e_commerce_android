@@ -23,6 +23,16 @@ class AuthLoginRequested extends AuthEvent {
   List<Object> get props => [phone, password];
 }
 
+class AuthDeliveryLoginRequested extends AuthEvent {
+  final String phone;
+  final String password;
+
+  const AuthDeliveryLoginRequested(this.phone, this.password);
+
+  @override
+  List<Object> get props => [phone, password];
+}
+
 /// Dispatched when the user submits the registration form
 class AuthRegisterRequested extends AuthEvent {
   final String name;
