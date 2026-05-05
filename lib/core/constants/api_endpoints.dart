@@ -40,6 +40,14 @@ class ApiEndpoints {
   static const String adminDashboardStats = '/api/admin/dashboard/stats';
   static const String adminVendors = '/api/admin/vendors';
   static const String deliveryLogin = '/api/orders/delivery/login';
+  static const String deliveryTasks = '/api/orders/delivery/my-tasks';
+
+  static String updateDeliveryTaskStatus(String id) =>
+      '/api/orders/delivery/update-status/$id';
+  static const String deliveryLogout = '/api/orders/delivery/logout';
+  static const String deliveryProfile = '/api/orders/delivery/profile';
+  static const String deliveryChangePassword =
+      '/api/orders/delivery/change-password';
 
   static String approveVendor(String id) => '/api/admin/vendors/$id/approve';
 

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
@@ -98,10 +100,36 @@ class AuthRepository {
 
   Future<UserModel> getMe() async {
     try {
-      final response = await _apiClient.dio.get(ApiEndpoints.me);
+      // 1. Grab the token from storage
+      final token = await _storageService.getToken();
+      if (token == null) throw ServerException('No token found');
 
-      final userData = response.data['user'] ?? response.data;
-      return UserModel.fromJson(userData);
+      // 2. Decode the JWT token to find the user's role
+      String role = 'user'; // default to customer
+      final parts = token.split('.');
+      if (parts.length == 3) {
+        final payload = base64Url.normalize(parts[1]);
+        final String decoded = utf8.decode(base64Url.decode(payload));
+        final Map<String, dynamic> tokenData = jsonDecode(decoded);
+        role = tokenData['role'] ?? 'user';
+      }
+
+      // 3. Route to the correct backend endpoint based on the role!
+      if (role == 'delivery_boy') {
+        final response = await _apiClient.dio.get(ApiEndpoints.deliveryProfile);
+
+        final Map<String, dynamic> boyData =
+            response.data['profile'] ?? response.data;
+        boyData['role'] =
+            'delivery_boy'; // Re-inject role so the AppRouter knows!
+
+        return UserModel.fromJson(boyData);
+      } else {
+        final response = await _apiClient.dio.get(ApiEndpoints.me);
+
+        final userData = response.data['user'] ?? response.data;
+        return UserModel.fromJson(userData);
+      }
     } on DioException catch (e) {
       throw ServerException(_extractErrorMessage(e));
     } catch (e) {

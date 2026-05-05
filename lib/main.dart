@@ -15,6 +15,8 @@ import 'features/auth/presentation/bloc/auth_state.dart'; // Added for the liste
 import 'features/cart/data/repositories/cart_repository.dart'; // Added for Cart
 import 'features/cart/presentation/bloc/cart_bloc.dart'; // Added for Cart
 import 'features/cart/presentation/bloc/cart_event.dart';
+import 'features/delivery/data/repositories/delivery_repository.dart';
+import 'features/delivery/presentation/bloc/delivery_bloc.dart';
 import 'features/orders/data/repositories/order_repository.dart';
 import 'features/orders/presentation/bloc/order_bloc.dart';
 import 'features/profile/data/repositories/profile_repository.dart';
@@ -95,6 +97,14 @@ Future<void> initDependencies() async {
     ),
   );
 
+  // --- NEW: Features - Delivery ---
+  sl.registerLazySingleton<DeliveryRepository>(
+    () => DeliveryRepository(apiClient: sl<ApiClient>()),
+  );
+  sl.registerLazySingleton<DeliveryBloc>(
+    () => DeliveryBloc(repository: sl<DeliveryRepository>()),
+  );
+
   // 3. Router
   // We create a singleton instance of AuthBloc to pass to the router for redirect logic
   final authBlocForRouter = sl<AuthBloc>();
@@ -110,14 +120,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          // Fetch the bloc instance from GetIt
-          create: (_) => sl<AuthBloc>(),
-        ),
+        BlocProvider<AuthBloc>(create: (_) => sl<AuthBloc>()),
         BlocProvider<ProductBloc>(create: (_) => sl<ProductBloc>()),
         BlocProvider<CartBloc>(create: (_) => sl<CartBloc>()),
         BlocProvider<OrderBloc>(create: (_) => sl<OrderBloc>()),
         BlocProvider<ProfileBloc>(create: (_) => sl<ProfileBloc>()),
+        BlocProvider<DeliveryBloc>(create: (_) => sl<DeliveryBloc>()),
       ],
       // We wrap the MaterialApp in a BlocListener for AuthBloc
       // to automatically fetch the cart when authentication succeeds.

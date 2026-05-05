@@ -11,7 +11,9 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/checkout/presentation/screens/checkout_screen.dart';
 import '../../features/checkout/presentation/screens/order_success_screen.dart';
+import '../../features/delivery/data/models/delivery_task_model.dart'; // NEW
 import '../../features/delivery/presentation/screens/delivery_dashboard_screen.dart'; // NEW
+import '../../features/delivery/presentation/screens/delivery_task_detail_screen.dart'; // NEW
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/orders/presentation/screens/orders_screen.dart';
@@ -107,6 +109,16 @@ class AppRouter {
           path: '/delivery-dashboard',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const DeliveryDashboardScreen(),
+        ),
+
+        GoRoute(
+          path: '/delivery-task-details',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) {
+            // Read the task we passed in the button's 'extra' parameter
+            final task = state.extra as DeliveryTask;
+            return DeliveryTaskDetailScreen(task: task);
+          },
         ),
 
         // --- The Bottom Navigation Shell ---
