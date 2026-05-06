@@ -41,6 +41,7 @@ class ApiEndpoints {
   static const String adminVendors = '/api/admin/vendors';
   static const String deliveryLogin = '/api/orders/delivery/login';
   static const String deliveryTasks = '/api/orders/delivery/my-tasks';
+  static const String deliveryQrCode = '/api/orders/payment/delivery-qr';
 
   static String updateDeliveryTaskStatus(String id) =>
       '/api/orders/delivery/update-status/$id';

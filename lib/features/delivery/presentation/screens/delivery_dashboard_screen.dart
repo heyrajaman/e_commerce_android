@@ -46,6 +46,16 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                 },
               ),
               IconButton(
+                icon: const Icon(
+                  Icons.account_circle_outlined,
+                  color: Colors.black87,
+                  size: 26,
+                ),
+                onPressed: () {
+                  context.push('/delivery-profile');
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.logout, color: Colors.black87),
                 onPressed: () {
                   context.read<AuthBloc>().add(const AuthLogoutRequested());
@@ -103,7 +113,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
               if (state is DeliveryLoaded) {
                 return TabBarView(
                   children: [
-                    _buildTaskList(state.activeTasks, isActive: true),
+                    _buildTaskList(
+                      state.filteredActiveTasks,
+                      isActive: true,
+                      activeFilter: state.activeFilter,
+                    ),
                     _buildTaskList(state.historyTasks, isActive: false),
                   ],
                 );
@@ -118,37 +132,98 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   }
 
   // A helper method to build the list view
-  Widget _buildTaskList(List<DeliveryTask> tasks, {required bool isActive}) {
-    if (tasks.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? Icons.inbox_outlined : Icons.history,
-              size: 64,
-              color: Colors.black26,
+  Widget _buildTaskList(
+    List<DeliveryTask> tasks, {
+    required bool isActive,
+    String activeFilter = 'All',
+  }) {
+    return Column(
+      children: [
+        // 🟢 Filter Chips (Only show on Active tab)
+        if (isActive)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: ['All', 'Assigned', 'Picked', 'Out for Delivery'].map((
+                filter,
+              ) {
+                final isSelected = activeFilter == filter;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text(filter),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        context.read<DeliveryBloc>().add(
+                          FilterActiveTasks(filter),
+                        );
+                      }
+                    },
+                    selectedColor: Colors.deepOrangeAccent.withValues(
+                      alpha: 0.2,
+                    ),
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected
+                            ? Colors.deepOrangeAccent
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? Colors.deepOrangeAccent
+                          : Colors.black87,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
-            const SizedBox(height: 16),
-            Text(
-              isActive ? 'No Active Tasks' : 'No History Yet',
-              style: const TextStyle(
-                color: Colors.black45,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+          ),
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: tasks.length,
-      itemBuilder: (context, index) {
-        final task = tasks[index];
-        return _TaskCard(task: task);
-      },
+        // 🟢 Task List
+        Expanded(
+          child: tasks.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isActive ? Icons.inbox_outlined : Icons.history,
+                        size: 64,
+                        color: Colors.black26,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        isActive
+                            ? 'No Tasks in "$activeFilter"'
+                            : 'No History Yet',
+                        style: const TextStyle(
+                          color: Colors.black45,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = tasks[index];
+                    return _TaskCard(
+                      task: task,
+                    ); // (Keep your existing _TaskCard widget below this)
+                  },
+                ),
+        ),
+      ],
     );
   }
 }

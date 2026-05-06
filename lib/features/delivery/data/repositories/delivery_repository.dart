@@ -43,4 +43,37 @@ class DeliveryRepository {
       throw Exception('Error updating task status: $e');
     }
   }
+
+  Future<String> getDeliveryQRCode(String orderId) async {
+    final response = await _apiClient.dio.post(
+      ApiEndpoints.deliveryQrCode,
+      data: {'orderId': orderId},
+    );
+    return response.data['qrString'];
+  }
+
+  /// Fetches the delivery boy profile
+  Future<DeliveryBoyProfile> getDeliveryProfile() async {
+    try {
+      final response = await _apiClient.dio.get(ApiEndpoints.deliveryProfile);
+      return DeliveryBoyProfile.fromJson(response.data['profile']);
+    } catch (e) {
+      throw Exception('Error fetching profile: $e');
+    }
+  }
+
+  /// Changes the delivery boy password
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _apiClient.dio.put(
+        ApiEndpoints.deliveryChangePassword,
+        data: {'oldPassword': oldPassword, 'newPassword': newPassword},
+      );
+    } catch (e) {
+      throw Exception('Error changing password: $e');
+    }
+  }
 }

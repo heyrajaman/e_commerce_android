@@ -13,6 +13,7 @@ import '../../features/checkout/presentation/screens/checkout_screen.dart';
 import '../../features/checkout/presentation/screens/order_success_screen.dart';
 import '../../features/delivery/data/models/delivery_task_model.dart'; // NEW
 import '../../features/delivery/presentation/screens/delivery_dashboard_screen.dart'; // NEW
+import '../../features/delivery/presentation/screens/delivery_profile_screen.dart'; // NEW
 import '../../features/delivery/presentation/screens/delivery_task_detail_screen.dart'; // NEW
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
@@ -119,6 +120,12 @@ class AppRouter {
             final task = state.extra as DeliveryTask;
             return DeliveryTaskDetailScreen(task: task);
           },
+        ),
+
+        GoRoute(
+          path: '/delivery-profile',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const DeliveryProfileScreen(),
         ),
 
         // --- The Bottom Navigation Shell ---

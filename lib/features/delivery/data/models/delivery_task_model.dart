@@ -109,6 +109,12 @@ class DeliveryTaskItem {
   factory DeliveryTaskItem.fromJson(Map<String, dynamic> json) {
     final productMap = json['Product'] as Map<String, dynamic>? ?? {};
 
+    String extractedImageUrl = '';
+    if (productMap['images'] != null &&
+        (productMap['images'] as List).isNotEmpty) {
+      extractedImageUrl = productMap['images'][0].toString();
+    }
+
     return DeliveryTaskItem(
       id: json['id'].toString(),
       productId: json['productId'].toString(),
@@ -119,7 +125,7 @@ class DeliveryTaskItem {
       returnReason: json['returnReason'],
       refundMethod: json['refundMethod'],
       productName: productMap['name'] ?? 'Unknown Product',
-      productImageUrl: productMap['imageUrl'] ?? '',
+      productImageUrl: extractedImageUrl,
     );
   }
 }
@@ -154,5 +160,39 @@ class DeliveryAddress {
       state,
     ].where((part) => part.isNotEmpty).toList();
     return parts.join(', ');
+  }
+}
+
+class DeliveryBoyProfile {
+  final String id;
+  final String name;
+  final String phone;
+  final String city;
+  final String state;
+  final int dailyOrderLimit;
+  final List<String> assignedAreas;
+
+  DeliveryBoyProfile({
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.city,
+    required this.state,
+    required this.dailyOrderLimit,
+    required this.assignedAreas,
+  });
+
+  factory DeliveryBoyProfile.fromJson(Map<String, dynamic> json) {
+    return DeliveryBoyProfile(
+      id: json['id'].toString(),
+      name: json['name'] ?? 'Unknown',
+      phone: json['phone'] ?? 'N/A',
+      city: json['city'] ?? 'N/A',
+      state: json['state'] ?? 'N/A',
+      dailyOrderLimit: json['maxOrders'] ?? 0,
+      assignedAreas:
+          (json['assignedAreas'] as List?)?.map((e) => e.toString()).toList() ??
+          [],
+    );
   }
 }
