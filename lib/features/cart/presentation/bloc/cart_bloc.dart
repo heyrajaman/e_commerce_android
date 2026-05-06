@@ -21,7 +21,6 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartResetLocal>(_onCartResetLocal);
   }
 
-  // Helper to extract the current cart safely from the state
   CartModel? _getCurrentCart() {
     if (state is CartLoaded) return (state as CartLoaded).cart;
     if (state is CartUpdating) return (state as CartUpdating).cart;
@@ -32,7 +31,15 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     CartFetchRequested event,
     Emitter<CartState> emit,
   ) async {
-    emit(const CartLoading());
+    final currentCart = _getCurrentCart();
+
+    // This stops the Cart Badge from disappearing while the API fetches new data!
+    if (currentCart != null) {
+      emit(CartUpdating(currentCart));
+    } else {
+      emit(const CartLoading());
+    }
+
     try {
       final cart = await _cartRepository.getCart();
       emit(CartLoaded(cart));
@@ -73,17 +80,12 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         );
       }
       emit(CartUpdating(currentCart.copyWith(items: updatedItems)));
-    } else {
-      emit(const CartLoading());
     }
 
     try {
-      final updatedCart = await _cartRepository.addToCart(
-        event.productId,
-        event.quantity,
-      );
+      await _cartRepository.addToCart(event.productId, event.quantity);
 
-      emit(CartLoaded(updatedCart));
+      add(const CartFetchRequested());
 
       if (event.quantity > 0) {
         Fluttertoast.showToast(
@@ -93,7 +95,6 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         );
       }
     } catch (e) {
-      // Revert to old cart if it fails
       if (currentCart != null) {
         emit(CartLoaded(currentCart));
       } else {
@@ -114,7 +115,6 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     final currentCart = _getCurrentCart();
     if (currentCart == null) return;
 
-    // 1. Optimistic Update: Instantly modify the local cart to feel fast
     final updatedItems = currentCart.items.map((item) {
       if (item.id == event.cartItemId) {
         return item.copyWith(quantity: event.newQuantity);
@@ -125,15 +125,10 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     final optimisticCart = currentCart.copyWith(items: updatedItems);
     emit(CartUpdating(optimisticCart));
 
-    // 2. Sync with Backend
     try {
-      final apiCart = await _cartRepository.updateCartItem(
-        event.cartItemId,
-        event.newQuantity,
-      );
-      emit(CartLoaded(apiCart));
+      await _cartRepository.updateCartItem(event.cartItemId, event.newQuantity);
+      add(const CartFetchRequested());
     } catch (e) {
-      // Revert if API fails
       emit(CartLoaded(currentCart));
       Fluttertoast.showToast(
         msg: "Failed to update quantity",
@@ -150,18 +145,15 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     final currentCart = _getCurrentCart();
     if (currentCart == null) return;
 
-    // 1. Optimistic Update: Instantly remove item locally
     final updatedItems = currentCart.items
         .where((item) => item.id != event.cartItemId)
         .toList();
     final optimisticCart = currentCart.copyWith(items: updatedItems);
     emit(CartUpdating(optimisticCart));
 
-    // 2. Sync with Backend
     try {
       await _cartRepository.removeCartItem(event.cartItemId);
-      // Trust our optimistic cart since the remove API might just return 200 OK without data
-      emit(CartLoaded(optimisticCart));
+      add(const CartFetchRequested());
     } catch (e) {
       emit(CartLoaded(currentCart));
       Fluttertoast.showToast(
@@ -180,8 +172,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
     try {
       await _cartRepository.clearCart();
-      // Emit an empty cart on success
-      emit(const CartLoaded(CartModel(items: [])));
+      add(const CartFetchRequested());
     } catch (e) {
       emit(CartError(e.toString()));
     }

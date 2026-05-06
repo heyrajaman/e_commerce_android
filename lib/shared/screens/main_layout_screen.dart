@@ -10,10 +10,21 @@ import '../../features/profile/presentation/bloc/profile_event.dart';
 import '../widgets/adaptive_layout_widget.dart';
 import '../widgets/cart_badge_widget.dart';
 
-class MainLayoutScreen extends StatelessWidget {
+class MainLayoutScreen extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainLayoutScreen({super.key, required this.navigationShell});
+
+  @override
+  State<MainLayoutScreen> createState() => _MainLayoutScreenState();
+}
+
+class _MainLayoutScreenState extends State<MainLayoutScreen> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<CartBloc>().add(const CartFetchRequested());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +54,7 @@ class MainLayoutScreen extends StatelessWidget {
     ];
 
     return AdaptiveScaffold(
-      selectedIndex: navigationShell.currentIndex,
+      selectedIndex: widget.navigationShell.currentIndex,
       onDestinationSelected: (index) {
         if (index == 3) {
           context.read<ProfileBloc>().add(const ProfileFetchRequested());
@@ -53,13 +64,13 @@ class MainLayoutScreen extends StatelessWidget {
           context.read<CartBloc>().add(const CartFetchRequested());
         }
 
-        navigationShell.goBranch(
+        widget.navigationShell.goBranch(
           index,
-          initialLocation: index == navigationShell.currentIndex,
+          initialLocation: index == widget.navigationShell.currentIndex,
         );
       },
       destinations: destinations,
-      body: navigationShell,
+      body: widget.navigationShell,
     );
   }
 }
