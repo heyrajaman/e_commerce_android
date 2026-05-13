@@ -19,6 +19,7 @@ import '../../../cart/presentation/bloc/cart_event.dart';
 import '../bloc/order_bloc.dart';
 import '../bloc/order_event.dart';
 import '../bloc/order_state.dart';
+import '../widgets/return_request_modal.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -150,6 +151,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  // 🟢 Handle Return Request Modal
+  void _showReturnModal(
+    BuildContext context,
+    String orderId,
+    String itemId,
+    String paymentMethod,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ReturnRequestModal(
+        orderId: orderId,
+        itemId: itemId,
+        paymentMethod: paymentMethod,
+      ),
+    );
+  }
+
   int _getOrderProgress(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
@@ -195,6 +215,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(state.message),
+                    backgroundColor: AppColors.kError,
+                  ),
+                );
+              } else if (state is OrderReturnRequestSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.green, // Success Green
+                  ),
+                );
+                // Refresh order to reflect the new return status
+                context.read<OrderBloc>().add(
+                  OrderDetailFetchRequested(widget.orderId),
+                );
+              } else if (state is OrderReturnRequestFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.error),
                     backgroundColor: AppColors.kError,
                   ),
                 );
@@ -498,6 +536,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             order.status == OrderStatus.confirmed) &&
         order.items.length > 1;
 
+    // 🟢 1. Check if the item already has a refund status active
+    final bool hasRefundStatus =
+        item.refundStatus != null &&
+        item.refundStatus != 'NONE' &&
+        item.refundStatus!.isNotEmpty;
+
+    // 🟢 2. Hide Return button if the order isn't DELIVERED OR if it's already returned
+    final canReturnItem =
+        order.status == OrderStatus.delivered && !hasRefundStatus;
+
     return GlassContainer(
       padding: const EdgeInsets.all(AppConstants.kSpaceSM),
       child: Column(
@@ -547,7 +595,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
 
-          // 🟢 Single Item Cancel Button
+          // Cancel Item Button (For Pending/Confirmed)
           if (canCancelItem) ...[
             const SizedBox(height: 8),
             Align(
@@ -565,6 +613,68 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   style: AppTextStyles.kLabelSmall.copyWith(
                     color: AppColors.kError,
                   ),
+                ),
+              ),
+            ),
+          ],
+
+          // 🟢 3. Show "Return Item" Button
+          if (canReturnItem) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _showReturnModal(
+                  context,
+                  order.id,
+                  item.itemId,
+                  order.paymentMethod,
+                ),
+                icon: const Icon(Icons.undo, size: 16, color: Colors.orange),
+                label: Text(
+                  'Return Item',
+                  style: AppTextStyles.kLabelSmall.copyWith(
+                    color: Colors.orange,
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          // 🟢 4. Show Beautiful Badge if Item is already Returned/Requested
+          if (hasRefundStatus) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircleAvatar(
+                      radius: 4,
+                      backgroundColor: Colors.orange,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Return: ${item.refundStatus}',
+                      // Will show "Return: REQUESTED" or "Return: REFUNDED"
+                      style: AppTextStyles.kLabelSmall.copyWith(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

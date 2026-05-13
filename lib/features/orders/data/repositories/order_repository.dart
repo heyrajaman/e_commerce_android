@@ -117,4 +117,40 @@ class OrderRepository {
       throw ServerException(e.toString());
     }
   }
+
+  Future<void> requestReturn({
+    required String orderId,
+    required String itemId,
+    required String reason,
+    required String paymentMethod,
+    String? refundMethod,
+    Map<String, dynamic>? bankDetails,
+  }) async {
+    try {
+      // 1. Prepare the base payload
+      final Map<String, dynamic> payload = {'reason': reason};
+
+      // 2. Handle refund method logic based on payment type
+      if (paymentMethod == 'COD') {
+        payload['refundMethod'] = refundMethod ?? 'WAREHOUSE_COLLECT';
+        if (refundMethod == 'BANK_TRANSFER' && bankDetails != null) {
+          payload['bankDetails'] = bankDetails;
+        }
+      } else {
+        payload['refundMethod'] = 'ORIGINAL_SOURCE';
+      }
+
+      // 3. Make the POST request to the backend
+      await _apiClient.dio.post(
+        ApiEndpoints.requestReturnItem(orderId, itemId),
+        data: payload,
+      );
+    } on DioException catch (e) {
+      throw e.error is Exception
+          ? e.error as Exception
+          : ServerException(e.message ?? 'Failed to submit return request');
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
 }

@@ -24,9 +24,9 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     on<OrderDetailFetchRequested>(_onOrderDetailFetchRequested);
     on<OrderTrackRequested>(_onOrderTrackRequested);
     on<OrderCancelRequested>(_onOrderCancelRequested);
-    // 🟢 FIX 3: Register the event handler here!
     on<OrderItemCancelRequested>(_onOrderItemCancelRequested);
     on<OrdersRefreshRequested>(_onOrdersRefreshRequested);
+    on<OrderRequestReturnEvent>(_onOrderRequestReturnEvent);
   }
 
   Future<void> _onOrdersFetchRequested(
@@ -104,6 +104,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
                   : '',
               price: item.price,
               quantity: item.quantity,
+              status: item.status,
+              refundStatus: item.refundStatus,
             ),
           );
         } catch (e) {
@@ -188,6 +190,34 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       );
     } catch (e) {
       emit(OrderError(e.toString()));
+    }
+  }
+
+  Future<void> _onOrderRequestReturnEvent(
+    OrderRequestReturnEvent event,
+    Emitter<OrderState> emit,
+  ) async {
+    emit(OrderReturnRequestLoading());
+    try {
+      await _orderRepository.requestReturn(
+        orderId: event.orderId,
+        itemId: event.itemId,
+        reason: event.reason,
+        paymentMethod: event.paymentMethod,
+        refundMethod: event.refundMethod,
+        bankDetails: event.bankDetails,
+      );
+
+      emit(
+        const OrderReturnRequestSuccess(
+          'Return requested successfully. Refund will be processed after Admin verification.',
+        ),
+      );
+
+      // Refresh the order details so the UI reflects the new "REQUESTED" status
+      add(OrderDetailFetchRequested(event.orderId));
+    } catch (e) {
+      emit(OrderReturnRequestFailure(e.toString()));
     }
   }
 }

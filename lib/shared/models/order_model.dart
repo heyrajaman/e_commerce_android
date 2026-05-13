@@ -91,6 +91,8 @@ class OrderItemModel extends Equatable {
   final String image;
   final double price;
   final int quantity;
+  final String? status;
+  final String? refundStatus;
 
   const OrderItemModel({
     required this.itemId,
@@ -99,6 +101,8 @@ class OrderItemModel extends Equatable {
     required this.image,
     required this.price,
     required this.quantity,
+    this.status,
+    this.refundStatus,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
@@ -110,6 +114,8 @@ class OrderItemModel extends Equatable {
       image: json['image']?.toString() ?? '',
       price: (json['price'] ?? 0).toDouble(),
       quantity: json['quantity'] ?? 1,
+      status: json['status']?.toString(),
+      refundStatus: json['refundStatus']?.toString(),
     );
   }
 
@@ -121,11 +127,22 @@ class OrderItemModel extends Equatable {
       'image': image,
       'price': price,
       'quantity': quantity,
+      'status': status,
+      'refundStatus': refundStatus,
     };
   }
 
   @override
-  List<Object?> get props => [itemId, productId, name, image, price, quantity];
+  List<Object?> get props => [
+    itemId,
+    productId,
+    name,
+    image,
+    price,
+    quantity,
+    status,
+    refundStatus,
+  ];
 }
 
 class OrderModel extends Equatable {

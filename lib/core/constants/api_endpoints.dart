@@ -33,6 +33,9 @@ class ApiEndpoints {
   static String cancelOrderItem(String orderId, String itemId) =>
       '/api/orders/$orderId/cancel-item/$itemId';
 
+  static String requestReturnItem(String orderId, String itemId) =>
+      '/api/orders/$orderId/items/$itemId/return';
+
   static String trackOrder(String id) => '/api/orders/track/$id';
 
   // --- Admin Endpoints ---

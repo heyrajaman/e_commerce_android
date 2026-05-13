@@ -58,3 +58,31 @@ class OrderItemCancelRequested extends OrderEvent {
 class OrdersRefreshRequested extends OrderEvent {
   const OrdersRefreshRequested();
 }
+
+class OrderRequestReturnEvent extends OrderEvent {
+  final String orderId;
+  final String itemId;
+  final String reason;
+  final String paymentMethod;
+  final String? refundMethod;
+  final Map<String, dynamic>? bankDetails;
+
+  const OrderRequestReturnEvent({
+    required this.orderId,
+    required this.itemId,
+    required this.reason,
+    required this.paymentMethod,
+    this.refundMethod,
+    this.bankDetails,
+  });
+
+  @override
+  List<Object?> get props => [
+    orderId,
+    itemId,
+    reason,
+    paymentMethod,
+    refundMethod,
+    bankDetails,
+  ];
+}

@@ -80,3 +80,23 @@ class OrderError extends OrderState {
   @override
   List<Object?> get props => [message];
 }
+
+class OrderReturnRequestLoading extends OrderState {}
+
+class OrderReturnRequestSuccess extends OrderState {
+  final String message;
+
+  const OrderReturnRequestSuccess(this.message);
+
+  @override
+  List<Object> get props => [message];
+}
+
+class OrderReturnRequestFailure extends OrderState {
+  final String error;
+
+  const OrderReturnRequestFailure(this.error);
+
+  @override
+  List<Object> get props => [error];
+}
