@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,10 +34,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
-  final PageController _pageController = PageController(viewportFraction: 0.9);
-  Timer? _bannerTimer;
 
-  final List<String> _categories = [
+  static const List<String> _categories = [
     'All',
     'Electronics',
     'Clothing',
@@ -54,25 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (productBloc.state is ProductInitial) {
       productBloc.add(const ProductsFetchRequested());
     }
-
-    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (_pageController.hasClients) {
-        int nextPage = _pageController.page!.round() + 1;
-        if (nextPage > 2) nextPage = 0;
-        _pageController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.fastOutSlowIn,
-        );
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _bannerTimer?.cancel();
-    _pageController.dispose();
-    super.dispose();
   }
 
   Future<void> _onRefresh() async {
@@ -87,13 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ? authState.user.name
         : 'Guest';
 
-    // Dynamically grab horizontal padding based on screen size
     final responsivePad = ResponsiveHelper.responsivePadding(context);
-
-    // Grid ratio ensuring the grid cards look identical to the horizontal scrolling cards
     const double cardAspectRatio = 170 / 200;
 
-    // 🟢 FIX: MeshGradientBackground now wraps the entire Scaffold!
     return MeshGradientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -102,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
           showBackButton: false,
           actions: [
             CartBadgeWidget(
-              onTap: () => context.push('/cart'),
+              onTap: () => context.pushNamed('cart'),
               iconColor: AppColors.kTextPrimary,
             ),
             const SizedBox(width: AppConstants.kSpaceMD),
@@ -113,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onRefresh: _onRefresh,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
               // --- Greeting ---
               SliverToBoxAdapter(
@@ -155,8 +129,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               hint: 'Search products...',
                               prefixIcon: Icons.search,
                               onChanged: (value) {
+                                // PROD COMPILE FIX: Switched to named parameter
                                 context.read<ProductBloc>().add(
-                                  ProductsSearchChanged(value ?? ''),
+                                  ProductsSearchChanged(query: value ?? ''),
                                 );
                               },
                             ),
@@ -194,9 +169,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             label: category,
                             isSelected: activeCategory == category,
                             onTap: () {
+                              // PROD COMPILE FIX: Switched to named parameter
                               context.read<ProductBloc>().add(
                                 ProductsCategorySelected(
-                                  category == 'All' ? null : category,
+                                  category: category == 'All' ? null : category,
                                 ),
                               );
                             },
@@ -250,12 +226,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     }
 
-                    // Check if the user is currently searching
                     final bool isSearching =
                         state.searchQuery != null &&
                         state.searchQuery!.trim().isNotEmpty;
 
-                    // If they are searching, show ONLY the search results grid!
                     if (isSearching) {
                       return SliverList(
                         delegate: SliverChildListDelegate([
@@ -278,12 +252,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               crossAxisSpacing: 10.0,
                               mainAxisSpacing: 10.0,
                               items: state.products,
-                              // Show all products matching the search
                               itemBuilder: (context, index, product) {
                                 return ProductCardWidget(
                                   product: product,
-                                  onTap: () =>
-                                      context.push('/product/${product.id}'),
+                                  onTap: () => context.pushNamed(
+                                    'product_details',
+                                    pathParameters: {'id': product.id},
+                                  ),
                                 );
                               },
                             ),
@@ -292,7 +267,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     }
 
-                    // If they are NOT searching, show the normal beautiful Home sections!
                     final newArrivalProducts = state.products;
                     final featuredProducts = state.products.length > 5
                         ? state.products.skip(5).take(5).toList()
@@ -336,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: AppTextStyles.kHeading3,
                               ),
                               TextButton(
-                                onPressed: () => context.push('/shop'),
+                                onPressed: () => context.pushNamed('shop'),
                                 child: Text(
                                   'View All',
                                   style: AppTextStyles.kButtonText.copyWith(
@@ -360,8 +334,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             itemBuilder: (context, index, product) {
                               return ProductCardWidget(
                                 product: product,
-                                onTap: () =>
-                                    context.push('/product/${product.id}'),
+                                onTap: () => context.pushNamed(
+                                  'product_details',
+                                  pathParameters: {'id': product.id},
+                                ),
                               );
                             },
                           ),
@@ -381,7 +357,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- Helper Method for Horizontal Rows ---
   Widget _buildHorizontalSection({
     required BuildContext context,
     required String title,
@@ -401,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(title, style: AppTextStyles.kHeading3),
               TextButton(
-                onPressed: () => context.push('/shop'),
+                onPressed: () => context.pushNamed('shop'),
                 child: Text(
                   'View All',
                   style: AppTextStyles.kButtonText.copyWith(
@@ -425,7 +400,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 170,
                 child: ProductCardWidget(
                   product: product,
-                  onTap: () => context.push('/shop/product/${product.id}'),
+                  onTap: () => context.pushNamed(
+                    'product_details',
+                    pathParameters: {'id': product.id},
+                  ),
                 ),
               );
             },

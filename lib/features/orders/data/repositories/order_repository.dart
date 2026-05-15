@@ -1,3 +1,5 @@
+import 'dart:developer' as developer; // PROD FIX: Secure logging
+
 import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
@@ -22,6 +24,17 @@ class OrderRepository {
 
   OrderRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
+  // PROD FIX: Standardized error extraction to display backend messages to the user
+  String _extractErrorMessage(DioException e) {
+    if (e.response?.data != null && e.response?.data is Map<String, dynamic>) {
+      final responseData = e.response!.data as Map<String, dynamic>;
+      if (responseData['message'] != null) {
+        return responseData['message'].toString();
+      }
+    }
+    return e.message ?? 'An unknown network error occurred';
+  }
+
   Future<PaginatedOrderResponse> getUserOrders({
     int page = 1,
     int limit = 10,
@@ -29,17 +42,19 @@ class OrderRepository {
     try {
       final response = await _apiClient.dio.get(
         ApiEndpoints.userOrders,
-        queryParameters: {
-          'page': page,
-          'limit': limit,
-        }, // Send pagination data to backend
+        queryParameters: {'page': page, 'limit': limit},
       );
 
       final dynamic rawData = response.data;
+
+      // SONARQUBE FIX: Explicit list casting
       final List<dynamic> dataList =
           rawData['orders'] ?? rawData['data'] ?? rawData['rows'] ?? [];
 
-      final orders = dataList.map((json) => OrderModel.fromJson(json)).toList();
+      // SONARQUBE FIX: Explicit Map casting for JSON safety
+      final orders = dataList
+          .map((json) => OrderModel.fromJson(json as Map<String, dynamic>))
+          .toList();
 
       return PaginatedOrderResponse(
         orders: orders,
@@ -47,41 +62,54 @@ class OrderRepository {
         totalPages: rawData['totalPages'] ?? 1,
       );
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(e.message ?? 'Failed to fetch orders');
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'GetUserOrders mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderRepository',
+      );
+      throw ServerException('Failed to process orders data.');
     }
   }
 
   Future<OrderModel> getOrderById(String id) async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.orderDetails(id));
-      final data = response.data['order'] ?? response.data;
+
+      // SONARQUBE FIX: Explicit Map casting
+      final Map<String, dynamic> data = response.data['order'] ?? response.data;
       return OrderModel.fromJson(data);
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(e.message ?? 'Failed to fetch order details');
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'GetOrderById mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderRepository',
+      );
+      throw ServerException('Failed to process order details.');
     }
   }
 
   Future<void> cancelOrder(String id, String reason) async {
     try {
-      // Pass the reason in the request body
       await _apiClient.dio.put(
         ApiEndpoints.cancelOrder(id),
         data: {'reason': reason},
       );
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(e.message ?? 'Failed to cancel order');
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'CancelOrder error',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderRepository',
+      );
+      throw ServerException('Failed to cancel order.');
     }
   }
 
@@ -96,25 +124,35 @@ class OrderRepository {
         data: {'reason': reason},
       );
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(e.message ?? 'Failed to cancel item');
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'CancelOrderItem error',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderRepository',
+      );
+      throw ServerException('Failed to cancel item.');
     }
   }
 
   Future<OrderModel> trackOrder(String id) async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.trackOrder(id));
-      final data = response.data['order'] ?? response.data;
+
+      // SONARQUBE FIX: Explicit Map casting
+      final Map<String, dynamic> data = response.data['order'] ?? response.data;
       return OrderModel.fromJson(data);
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(e.message ?? 'Failed to track order');
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'TrackOrder mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderRepository',
+      );
+      throw ServerException('Failed to process tracking data.');
     }
   }
 
@@ -127,10 +165,8 @@ class OrderRepository {
     Map<String, dynamic>? bankDetails,
   }) async {
     try {
-      // 1. Prepare the base payload
       final Map<String, dynamic> payload = {'reason': reason};
 
-      // 2. Handle refund method logic based on payment type
       if (paymentMethod == 'COD') {
         payload['refundMethod'] = refundMethod ?? 'WAREHOUSE_COLLECT';
         if (refundMethod == 'BANK_TRANSFER' && bankDetails != null) {
@@ -140,17 +176,20 @@ class OrderRepository {
         payload['refundMethod'] = 'ORIGINAL_SOURCE';
       }
 
-      // 3. Make the POST request to the backend
       await _apiClient.dio.post(
         ApiEndpoints.requestReturnItem(orderId, itemId),
         data: payload,
       );
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(e.message ?? 'Failed to submit return request');
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'RequestReturn error',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderRepository',
+      );
+      throw ServerException('Failed to submit return request.');
     }
   }
 }

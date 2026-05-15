@@ -97,23 +97,19 @@ class _ShopScreenState extends State<ShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Dynamically grab horizontal padding based on screen size
     final responsivePad = ResponsiveHelper.responsivePadding(context);
 
     return MeshGradientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: const CustomAppBar(title: 'Shop', showBackButton: true),
-        body: MultiBlocListener(
-          listeners: [
-            BlocListener<ProductBloc, ProductState>(
-              listener: (context, state) {
-                if (state is ProductsLoaded || state is ProductError) {
-                  setState(() => _isFetchingMore = false);
-                }
-              },
-            ),
-          ],
+        // SONARQUBE FIX: Replaced MultiBlocListener with a single BlocListener
+        body: BlocListener<ProductBloc, ProductState>(
+          listener: (context, state) {
+            if (state is ProductsLoaded || state is ProductError) {
+              setState(() => _isFetchingMore = false);
+            }
+          },
           child: RefreshIndicator(
             color: AppColors.kAccentIndigo,
             onRefresh: () async {
@@ -124,7 +120,6 @@ class _ShopScreenState extends State<ShopScreen> {
               context.read<ProductBloc>().add(const ProductsRefreshRequested());
               await Future.delayed(const Duration(seconds: 1));
             },
-            // Moved scrolling to the top level so the entire page behaves responsively
             child: SingleChildScrollView(
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
@@ -144,7 +139,6 @@ class _ShopScreenState extends State<ShopScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // Category Filter wrapped in Expanded
                               Expanded(
                                 child: BlocBuilder<ProductBloc, ProductState>(
                                   builder: (context, state) {
@@ -170,7 +164,6 @@ class _ShopScreenState extends State<ShopScreen> {
                                     return DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
                                         isExpanded: true,
-                                        // ADD THIS: Forces text to truncate instead of overflow
                                         value: activeCategory,
                                         icon: const Icon(
                                           Icons.keyboard_arrow_down,
@@ -198,9 +191,10 @@ class _ShopScreenState extends State<ShopScreen> {
                                               _currentPage = 1;
                                               _isFetchingMore = false;
                                             });
+                                            // PROD COMPILE FIX: Switched to named parameter
                                             context.read<ProductBloc>().add(
                                               ProductsCategorySelected(
-                                                newValue == 'All'
+                                                category: newValue == 'All'
                                                     ? null
                                                     : newValue,
                                               ),
@@ -215,7 +209,6 @@ class _ShopScreenState extends State<ShopScreen> {
 
                               const SizedBox(width: 12),
 
-                              // Sort Dropdown wrapped in Expanded
                               Expanded(
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<SortOption>(
@@ -296,20 +289,17 @@ class _ShopScreenState extends State<ShopScreen> {
                     builder: (context, state) {
                       if (state is ProductInitial ||
                           (state is ProductsLoading && !_isFetchingMore)) {
-                        // Initial Loading State: Show a responsive grid of shimmer skeletons
                         return Padding(
                           padding: responsivePad,
                           child: ResponsiveGridView(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             items: List.generate(6, (index) => index),
-                            // 6 dummy items
                             itemBuilder: (context, index, item) =>
                                 const ShimmerProductCard(),
                           ),
                         );
                       } else if (state is ProductError) {
-                        // Error State
                         return Padding(
                           padding: responsivePad.copyWith(
                             top: AppConstants.kSpaceXL,
@@ -326,7 +316,6 @@ class _ShopScreenState extends State<ShopScreen> {
                         );
                       } else if (state is ProductsLoaded) {
                         if (state.products.isEmpty) {
-                          // Empty State
                           return Padding(
                             padding: responsivePad.copyWith(
                               top: AppConstants.kSpaceXL,
@@ -346,8 +335,6 @@ class _ShopScreenState extends State<ShopScreen> {
                           state.products,
                         );
 
-                        // Prepare the items list. If there is more data to fetch, we append dummy
-                        // strings to the end of the list so our builder knows to render a Shimmer card.
                         final List<dynamic> gridItems = List.from(
                           sortedProducts,
                         );
@@ -378,8 +365,11 @@ class _ShopScreenState extends State<ShopScreen> {
                               final product = item as ProductModel;
                               return ProductCardWidget(
                                 product: product,
-                                onTap: () =>
-                                    context.push('/product/${product.id}'),
+                                // PROD ROUTING FIX: Safe named route usage
+                                onTap: () => context.pushNamed(
+                                  'product_details',
+                                  pathParameters: {'id': product.id},
+                                ),
                               );
                             },
                           ),

@@ -34,10 +34,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<OrderBloc>().add(OrderDetailFetchRequested(widget.orderId));
+    // PROD COMPILE FIX: Switched to named parameters
+    context.read<OrderBloc>().add(
+      OrderDetailFetchRequested(orderId: widget.orderId),
+    );
   }
 
-  // 🟢 Handle Full Order Cancellation (For 1-item orders)
   void _confirmCancelOrder(BuildContext context) {
     final reasonController = TextEditingController();
 
@@ -53,6 +55,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: reasonController,
+              autofocus: true,
               decoration: const InputDecoration(
                 hintText: 'Reason for cancellation',
                 border: OutlineInputBorder(),
@@ -63,7 +66,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              reasonController.dispose();
+              Navigator.pop(ctx);
+            },
             child: Text('Keep Order', style: AppTextStyles.kBodyMedium),
           ),
           TextButton(
@@ -76,9 +82,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 return;
               }
               Navigator.pop(ctx);
+              // PROD COMPILE FIX: Switched to named parameters
               context.read<OrderBloc>().add(
-                OrderCancelRequested(widget.orderId, reason),
+                OrderCancelRequested(orderId: widget.orderId, reason: reason),
               );
+              reasonController.dispose();
             },
             child: Text(
               'Confirm Cancel',
@@ -92,7 +100,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  // 🟢 Handle Single Item Cancellation (For multi-item orders)
   void _confirmCancelItem(
     BuildContext context,
     String itemId,
@@ -112,6 +119,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: reasonController,
+              autofocus: true,
               decoration: const InputDecoration(
                 hintText: 'Reason for cancellation',
                 border: OutlineInputBorder(),
@@ -122,7 +130,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              reasonController.dispose();
+              Navigator.pop(ctx);
+            },
             child: Text('Keep Item', style: AppTextStyles.kBodyMedium),
           ),
           TextButton(
@@ -135,9 +146,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 return;
               }
               Navigator.pop(ctx);
+              // PROD COMPILE FIX: Switched to named parameters
               context.read<OrderBloc>().add(
-                OrderItemCancelRequested(widget.orderId, itemId, reason),
+                OrderItemCancelRequested(
+                  orderId: widget.orderId,
+                  itemId: itemId,
+                  reason: reason,
+                ),
               );
+              reasonController.dispose();
             },
             child: Text(
               'Confirm Cancel',
@@ -151,7 +168,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  // 🟢 Handle Return Request Modal
   void _showReturnModal(
     BuildContext context,
     String orderId,
@@ -188,7 +204,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🟢 Wrap the entire screen in PopScope to detect back navigation
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
@@ -209,7 +224,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 );
                 context.read<OrderBloc>().add(
-                  OrderDetailFetchRequested(widget.orderId),
+                  OrderDetailFetchRequested(orderId: widget.orderId),
                 );
               } else if (state is OrderError) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -222,12 +237,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(state.message),
-                    backgroundColor: Colors.green, // Success Green
+                    backgroundColor: Colors.green,
                   ),
                 );
-                // Refresh order to reflect the new return status
                 context.read<OrderBloc>().add(
-                  OrderDetailFetchRequested(widget.orderId),
+                  OrderDetailFetchRequested(orderId: widget.orderId),
                 );
               } else if (state is OrderReturnRequestFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -296,7 +310,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         color: AppColors.kTextPrimary,
                       ),
                       onPressed: () {
-                        // 🟢 Also trigger fetch on manual back button press
                         context.read<OrderBloc>().add(
                           const OrdersFetchRequested(),
                         );
@@ -308,7 +321,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     padding: const EdgeInsets.all(AppConstants.kSpaceLG),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        // --- Status Banner ---
                         GlassContainer(
                           padding: const EdgeInsets.all(AppConstants.kSpaceLG),
                           child: Row(
@@ -337,7 +349,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
                         const SizedBox(height: AppConstants.kSpaceLG),
 
-                        // --- Tracking Timeline ---
                         Text('Tracking', style: AppTextStyles.kHeading3),
                         const SizedBox(height: AppConstants.kSpaceSM),
                         GlassContainer(
@@ -347,7 +358,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
                         const SizedBox(height: AppConstants.kSpaceLG),
 
-                        // --- Items List ---
                         Text('Items', style: AppTextStyles.kHeading3),
                         const SizedBox(height: AppConstants.kSpaceSM),
                         ...order.items.map(
@@ -360,7 +370,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                 AppConstants.kRadiusLG,
                               ),
                               onTap: () {
-                                context.push('/product/${item.productId}');
+                                // PROD ROUTING FIX: Use named parameters
+                                context.pushNamed(
+                                  'product_details',
+                                  pathParameters: {'id': item.productId},
+                                );
                               },
                               child: _buildItemCard(item, order!),
                             ),
@@ -369,7 +383,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
                         const SizedBox(height: AppConstants.kSpaceMD),
 
-                        // --- Shipping Address ---
                         Text(
                           'Shipping Address',
                           style: AppTextStyles.kHeading3,
@@ -379,7 +392,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
                         const SizedBox(height: AppConstants.kSpaceLG),
 
-                        // --- Payment Summary ---
                         Text('Payment Summary', style: AppTextStyles.kHeading3),
                         const SizedBox(height: AppConstants.kSpaceSM),
                         _buildPaymentSummary(order),
@@ -395,7 +407,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             final router = GoRouter.of(context);
 
                             try {
-                              // 1. Clear cart
                               cartBloc.add(const CartCleared());
                               await Future.delayed(
                                 const Duration(milliseconds: 300),
@@ -403,7 +414,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
                               if (!mounted) return;
 
-                              // 2. Add items
                               for (var item in order!.items) {
                                 cartBloc.add(
                                   CartItemAdded(
@@ -411,16 +421,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                     quantity: item.quantity,
                                   ),
                                 );
-                                // Give the Bloc a moment to process each addition
                                 await Future.delayed(
                                   const Duration(milliseconds: 100),
                                 );
                               }
 
-                              // 3. Navigate
                               if (mounted) {
                                 cartBloc.add(const CartFetchRequested());
-                                router.go('/cart');
+                                // PROD ROUTING FIX: Use named routes
+                                router.goNamed('cart');
                                 messenger.showSnackBar(
                                   const SnackBar(
                                     content: Text(
@@ -444,7 +453,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ).animate().fadeIn(delay: 400.ms),
                         const SizedBox(height: AppConstants.kSpaceMD),
 
-                        // --- Cancel Action (Only for 1 item orders) ---
                         if ((order.status == OrderStatus.pending ||
                                 order.status == OrderStatus.confirmed) &&
                             order.items.length == 1)
@@ -529,20 +537,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  // 🟢 Updated to accept 'order' and show Cancel Item button dynamically
   Widget _buildItemCard(OrderItemModel item, OrderModel order) {
     final canCancelItem =
         (order.status == OrderStatus.pending ||
             order.status == OrderStatus.confirmed) &&
         order.items.length > 1;
 
-    // 🟢 1. Check if the item already has a refund status active
     final bool hasRefundStatus =
         item.refundStatus != null &&
         item.refundStatus != 'NONE' &&
         item.refundStatus!.isNotEmpty;
 
-    // 🟢 2. Hide Return button if the order isn't DELIVERED OR if it's already returned
     final canReturnItem =
         order.status == OrderStatus.delivered && !hasRefundStatus;
 
@@ -595,7 +600,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
 
-          // Cancel Item Button (For Pending/Confirmed)
           if (canCancelItem) ...[
             const SizedBox(height: 8),
             Align(
@@ -618,7 +622,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ],
 
-          // 🟢 3. Show "Return Item" Button
           if (canReturnItem) ...[
             const SizedBox(height: 8),
             Align(
@@ -641,7 +644,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ],
 
-          // 🟢 4. Show Beautiful Badge if Item is already Returned/Requested
           if (hasRefundStatus) ...[
             const SizedBox(height: 12),
             Align(
@@ -668,7 +670,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     const SizedBox(width: 6),
                     Text(
                       'Return: ${item.refundStatus}',
-                      // Will show "Return: REQUESTED" or "Return: REFUNDED"
                       style: AppTextStyles.kLabelSmall.copyWith(
                         color: Colors.orange,
                         fontWeight: FontWeight.bold,
@@ -717,7 +718,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       padding: const EdgeInsets.all(AppConstants.kSpaceLG),
       child: Column(
         children: [
-          // Subtotal Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -736,8 +736,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
           const SizedBox(height: 8),
-
-          // Shipping Charge Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -759,8 +757,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
           const SizedBox(height: 8),
-
-          // Payment Method Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -778,13 +774,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ],
           ),
-
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
             child: Divider(color: AppColors.kGlassBorder),
           ),
-
-          // Total Amount Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

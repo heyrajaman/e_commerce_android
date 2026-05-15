@@ -1,4 +1,7 @@
 class ApiEndpoints {
+  // PROD & SONAR FIX: Private constructor prevents accidental instantiation of this utility class
+  ApiEndpoints._();
+
   // --- Auth (Customer) ---
   static const String login = '/api/auth/login';
   static const String register = '/api/auth/register';
@@ -38,45 +41,15 @@ class ApiEndpoints {
 
   static String trackOrder(String id) => '/api/orders/track/$id';
 
-  // --- Admin Endpoints ---
-  static const String adminLogin = '/api/admin/login';
-  static const String adminDashboardStats = '/api/admin/dashboard/stats';
-  static const String adminVendors = '/api/admin/vendors';
+  // --- Delivery Boy Endpoints ---
   static const String deliveryLogin = '/api/orders/delivery/login';
   static const String deliveryTasks = '/api/orders/delivery/my-tasks';
   static const String deliveryQrCode = '/api/orders/payment/delivery-qr';
-
-  static String updateDeliveryTaskStatus(String id) =>
-      '/api/orders/delivery/update-status/$id';
   static const String deliveryLogout = '/api/orders/delivery/logout';
   static const String deliveryProfile = '/api/orders/delivery/profile';
   static const String deliveryChangePassword =
       '/api/orders/delivery/change-password';
 
-  static String approveVendor(String id) => '/api/admin/vendors/$id/approve';
-
-  static String rejectVendor(String id) => '/api/admin/vendors/$id/reject';
-
-  static const String adminAllOrders = '/api/orders/admin/all';
-
-  static String adminOrderDetails(String id) => '/api/orders/admin/$id';
-
-  static String adminUpdateItemStatus(String id) =>
-      '/api/orders/admin/item/$id';
-
-  static String adminUpdateOrderStatus(String id) =>
-      '/api/orders/admin/$id/status';
-
-  static const String deliveryBoys = '/api/orders/admin/delivery-boys';
-
-  static String deleteDeliveryBoy(String id) =>
-      '/api/orders/admin/delivery-boys/$id';
-
-  static String assignDeliveryBoy(String orderId) =>
-      '/api/orders/$orderId/assign';
-
-  // --- Vendor Endpoints ---
-  static const String vendorLogin = '/api/vendor/login';
-  static const String vendorRegister = '/api/vendor/register';
-  static const String vendorMyProducts = '/api/products/vendor/my-products';
+  static String updateDeliveryTaskStatus(String id) =>
+      '/api/orders/delivery/update-status/$id';
 }

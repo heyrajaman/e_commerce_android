@@ -21,16 +21,30 @@ class AuthLoginRequested extends AuthEvent {
 
   @override
   List<Object> get props => [phone, password];
+
+  // PROD SECURITY FIX: Prevent plain-text passwords from leaking into system logs or analytics
+  @override
+  String toString() => 'AuthLoginRequested(phone: $phone, password: ***)';
 }
 
+/// Dispatched when the delivery boy submits the login form
 class AuthDeliveryLoginRequested extends AuthEvent {
   final String phone;
   final String password;
 
-  const AuthDeliveryLoginRequested(this.phone, this.password);
+  // SonarQube Fix: Converted to named parameters to maintain consistency with other events
+  const AuthDeliveryLoginRequested({
+    required this.phone,
+    required this.password,
+  });
 
   @override
   List<Object> get props => [phone, password];
+
+  // PROD SECURITY FIX: Prevent plain-text passwords from leaking
+  @override
+  String toString() =>
+      'AuthDeliveryLoginRequested(phone: $phone, password: ***)';
 }
 
 /// Dispatched when the user submits the registration form
@@ -49,6 +63,11 @@ class AuthRegisterRequested extends AuthEvent {
 
   @override
   List<Object> get props => [name, email, password, phone];
+
+  // PROD SECURITY FIX: Prevent plain-text passwords from leaking
+  @override
+  String toString() =>
+      'AuthRegisterRequested(name: $name, email: $email, phone: $phone, password: ***)';
 }
 
 /// Dispatched when the user clicks the logout button

@@ -1,11 +1,13 @@
+import 'dart:developer' as developer; // 🟢 Added for secure logging
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:fluttertoast/fluttertoast.dart'; // 🟢 Added for error toasts
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
-import 'package:get_it/get_it.dart'; // 🟢 Added for ApiClient
+import 'package:get_it/get_it.dart';
 
-import '../../../../core/network/api_client.dart'; // 🟢 Added to fetch areas
+import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_constants.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -28,18 +30,17 @@ class AddressesScreen extends StatefulWidget {
 class _AddressesScreenState extends State<AddressesScreen> {
   final _addressFormKey = GlobalKey<FormBuilderState>();
 
-  // 🟢 Added State variables for dynamic areas
   List<Map<String, dynamic>> _shippingRates = [];
   bool _isLoadingRates = true;
 
   @override
   void initState() {
     super.initState();
-    context.read<ProfileBloc>().add(ProfileAddressesFetchRequested());
-    _fetchShippingRates(); // 🟢 Fetch areas on init
+    // PROD MEMORY FIX: Added 'const' to use the optimized constructor
+    context.read<ProfileBloc>().add(const ProfileAddressesFetchRequested());
+    _fetchShippingRates();
   }
 
-  // 🟢 Added fetch method identical to checkout_screen.dart
   Future<void> _fetchShippingRates() async {
     try {
       final response = await GetIt.I<ApiClient>().dio.get(
@@ -64,7 +65,14 @@ class _AddressesScreenState extends State<AddressesScreen> {
           _isLoadingRates = false;
         });
       }
-    } catch (e) {
+    } catch (e, stack) {
+      // PROD LOGGING FIX: Securely log the error so we know why it failed
+      developer.log(
+        'Failed to load shipping rates',
+        error: e,
+        stackTrace: stack,
+        name: 'AddressesScreen',
+      );
       if (mounted) {
         setState(() => _isLoadingRates = false);
       }
@@ -89,7 +97,6 @@ class _AddressesScreenState extends State<AddressesScreen> {
           padding: const EdgeInsets.all(AppConstants.kSpaceLG),
           child: FormBuilder(
             key: _addressFormKey,
-            // 🟢 Set initial values for the locked fields
             initialValue: const {'city': 'Raipur', 'state': 'Chhattisgarh'},
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -97,7 +104,6 @@ class _AddressesScreenState extends State<AddressesScreen> {
                 Text('Add New Address', style: AppTextStyles.kHeading3),
                 const SizedBox(height: AppConstants.kSpaceLG),
 
-                // 🟢 Renamed to Address Line
                 CustomTextField(
                   name: 'addressLine1',
                   label: 'Address Line',
@@ -105,7 +111,6 @@ class _AddressesScreenState extends State<AddressesScreen> {
                 ),
                 const SizedBox(height: AppConstants.kSpaceMD),
 
-                // 🟢 Dynamic Dropdown for Area
                 _isLoadingRates
                     ? const Padding(
                         padding: EdgeInsets.all(16.0),
@@ -146,7 +151,6 @@ class _AddressesScreenState extends State<AddressesScreen> {
                       ),
                 const SizedBox(height: AppConstants.kSpaceMD),
 
-                // 🟢 Read-Only City & State
                 Row(
                   children: [
                     Expanded(
@@ -173,6 +177,9 @@ class _AddressesScreenState extends State<AddressesScreen> {
                 PrimaryButton(
                   label: 'Save Address',
                   onPressed: () {
+                    // PROD UX FIX: Drop the keyboard to prevent layout jumps when the dialog closes
+                    FocusScope.of(context).unfocus();
+
                     if (_addressFormKey.currentState?.saveAndValidate() ??
                         false) {
                       final values = _addressFormKey.currentState!.value;
@@ -216,6 +223,8 @@ class _AddressesScreenState extends State<AddressesScreen> {
         body: BlocConsumer<ProfileBloc, ProfileState>(
           listener: (context, state) {
             if (state is ProfileAddressActionSuccess) {
+              // PROD UX FIX: Clear previous SnackBars before showing a new one
+              ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(SnackBar(content: Text(state.message)));
@@ -258,7 +267,8 @@ class _AddressesScreenState extends State<AddressesScreen> {
                           color: AppColors.kError,
                         ),
                         onPressed: () => context.read<ProfileBloc>().add(
-                          ProfileAddressDeleteRequested(address.id),
+                          // PROD COMPILE FIX: Switched to named parameters
+                          ProfileAddressDeleteRequested(addressId: address.id),
                         ),
                       ),
                     ),

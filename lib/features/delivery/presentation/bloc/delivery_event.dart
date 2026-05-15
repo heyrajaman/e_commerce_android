@@ -1,13 +1,17 @@
 import 'package:equatable/equatable.dart';
 
-abstract class DeliveryEvent extends Equatable {
+// PROD ARCHITECTURE FIX: Upgraded to 'sealed class' for exhaustive matching
+sealed class DeliveryEvent extends Equatable {
   const DeliveryEvent();
 
   @override
   List<Object?> get props => [];
 }
 
-class FetchDeliveryTasks extends DeliveryEvent {}
+class FetchDeliveryTasks extends DeliveryEvent {
+  // PROD MEMORY FIX: Added const constructor
+  const FetchDeliveryTasks();
+}
 
 class UpdateDeliveryTaskStatus extends DeliveryEvent {
   final String assignmentId;
@@ -38,13 +42,17 @@ class FetchDeliveryQRCode extends DeliveryEvent {
 class FilterActiveTasks extends DeliveryEvent {
   final String filter;
 
-  const FilterActiveTasks(this.filter);
+  // SONARQUBE FIX: Switched to named parameters for consistency
+  const FilterActiveTasks({required this.filter});
 
   @override
   List<Object?> get props => [filter];
 }
 
-class FetchDeliveryProfile extends DeliveryEvent {}
+class FetchDeliveryProfile extends DeliveryEvent {
+  // PROD MEMORY FIX: Added const constructor
+  const FetchDeliveryProfile();
+}
 
 class ChangeDeliveryPassword extends DeliveryEvent {
   final String oldPassword;

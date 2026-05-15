@@ -111,13 +111,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
               // --- Main Content Area ---
               Expanded(
-                child: BlocConsumer<OrderBloc, OrderState>(
-                  listener: (context, state) {},
+                // SONARQUBE FIX: Replaced BlocConsumer with BlocBuilder to eliminate the empty listener code smell
+                child: BlocBuilder<OrderBloc, OrderState>(
                   builder: (context, state) {
                     List<OrderModel> orders = [];
                     bool hasReachedMax = true;
 
-                    // Access the current state from the BLoC directly
                     final currentBlocState = context.read<OrderBloc>().state;
 
                     if (state is OrdersLoaded) {
@@ -138,14 +137,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       );
                     }
 
-                    // Handle Error (only if we have no data to show)
                     if (state is OrderError && orders.isEmpty) {
                       return ErrorStateWidget(message: state.message);
                     }
 
                     if (orders.isEmpty && state is! OrdersLoading) {
                       return EmptyStateWidget.noOrders(
-                        onAction: () => context.go('/shop'),
+                        // PROD ROUTING FIX: Use safe named routes
+                        onAction: () => context.goNamed('shop'),
                       );
                     }
 
@@ -225,7 +224,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 return OrderCardWidget(
                                   order: order,
                                   onTap: () {
-                                    context.push('/orders/${order.id}');
+                                    // PROD ROUTING FIX: Use safe named routes
+                                    context.pushNamed(
+                                      'order_details',
+                                      pathParameters: {'id': order.id},
+                                    );
                                   },
                                 );
                               },

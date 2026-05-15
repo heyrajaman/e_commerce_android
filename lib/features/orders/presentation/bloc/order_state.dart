@@ -17,7 +17,6 @@ class OrdersLoading extends OrderState {
   const OrdersLoading();
 }
 
-// 🟢 UPDATED: Now tracks current page and if we hit the end of the list
 class OrdersLoaded extends OrderState {
   final List<OrderModel> orders;
   final bool hasReachedMax;
@@ -81,7 +80,10 @@ class OrderError extends OrderState {
   List<Object?> get props => [message];
 }
 
-class OrderReturnRequestLoading extends OrderState {}
+class OrderReturnRequestLoading extends OrderState {
+  // PROD MEMORY FIX: Added const constructor to prevent memory reallocation
+  const OrderReturnRequestLoading();
+}
 
 class OrderReturnRequestSuccess extends OrderState {
   final String message;
@@ -89,7 +91,7 @@ class OrderReturnRequestSuccess extends OrderState {
   const OrderReturnRequestSuccess(this.message);
 
   @override
-  List<Object> get props => [message];
+  List<Object?> get props => [message];
 }
 
 class OrderReturnRequestFailure extends OrderState {
@@ -98,5 +100,5 @@ class OrderReturnRequestFailure extends OrderState {
   const OrderReturnRequestFailure(this.error);
 
   @override
-  List<Object> get props => [error];
+  List<Object?> get props => [error];
 }

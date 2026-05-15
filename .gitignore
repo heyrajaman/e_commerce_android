@@ -105,3 +105,28 @@ app.*.map.json
 # =========================
 .env*
 !.env.example
+
+# Lock files
+pubspec.lock
+
+# Additional Tool Caches
+.metadata
+.fvm/
+
+# VS Code
+.history/
+*.code-workspace
+
+# Android Studio
+*.out
+.display/
+# Logs
+/crashlytics-debug.xml
+
+# macOS specific
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+

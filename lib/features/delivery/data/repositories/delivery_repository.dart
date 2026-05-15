@@ -1,4 +1,9 @@
+import 'dart:developer' as developer; // PROD FIX: Secure logging
+
+import 'package:dio/dio.dart';
+
 import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/delivery_task_model.dart';
 
@@ -7,18 +12,36 @@ class DeliveryRepository {
 
   DeliveryRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
+  // PROD FIX: Standardized error extraction to display backend messages to the delivery partner
+  String _extractErrorMessage(DioException e) {
+    if (e.response?.data != null && e.response?.data is Map<String, dynamic>) {
+      final responseData = e.response!.data as Map<String, dynamic>;
+      if (responseData['message'] != null) {
+        return responseData['message'].toString();
+      }
+    }
+    return e.message ?? 'An unknown network error occurred';
+  }
+
   /// Fetches the assigned active and history tasks for the logged-in delivery boy
   Future<DeliveryTasksResponse> getMyTasks() async {
     try {
-      // 1. Add .dio before .get
       final response = await _apiClient.dio.get(ApiEndpoints.deliveryTasks);
 
-      // 2. Dio automatically decodes the JSON and places it inside response.data!
-      final Map<String, dynamic> data = response.data;
+      // SONARQUBE FIX: Explicit map casting
+      final Map<String, dynamic> data = response.data as Map<String, dynamic>;
 
       return DeliveryTasksResponse.fromJson(data);
-    } catch (e) {
-      throw Exception('Error fetching delivery tasks: $e');
+    } on DioException catch (e) {
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'GetMyTasks mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryRepository',
+      );
+      throw ServerException('Failed to process delivery tasks.');
     }
   }
 
@@ -34,31 +57,64 @@ class DeliveryRepository {
       if (codPaymentMode != null) bodyData['codPaymentMode'] = codPaymentMode;
       if (utrNumber != null) bodyData['utrNumber'] = utrNumber;
 
-      // 3. Add .dio before .put, and change 'body:' to 'data:'
       await _apiClient.dio.put(
         ApiEndpoints.updateDeliveryTaskStatus(assignmentId),
         data: bodyData,
       );
-    } catch (e) {
-      throw Exception('Error updating task status: $e');
+    } on DioException catch (e) {
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'UpdateTaskStatus error',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryRepository',
+      );
+      throw ServerException('Failed to update task status.');
     }
   }
 
   Future<String> getDeliveryQRCode(String orderId) async {
-    final response = await _apiClient.dio.post(
-      ApiEndpoints.deliveryQrCode,
-      data: {'orderId': orderId},
-    );
-    return response.data['qrString'];
+    try {
+      final response = await _apiClient.dio.post(
+        ApiEndpoints.deliveryQrCode,
+        data: {'orderId': orderId},
+      );
+
+      // PROD FIX: Safely extract and cast to String
+      return response.data['qrString']?.toString() ?? '';
+    } on DioException catch (e) {
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'GetDeliveryQRCode error',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryRepository',
+      );
+      throw ServerException('Failed to generate QR code.');
+    }
   }
 
   /// Fetches the delivery boy profile
   Future<DeliveryBoyProfile> getDeliveryProfile() async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.deliveryProfile);
-      return DeliveryBoyProfile.fromJson(response.data['profile']);
-    } catch (e) {
-      throw Exception('Error fetching profile: $e');
+
+      // SONARQUBE FIX: Explicit map casting
+      final Map<String, dynamic> profileData =
+          response.data['profile'] as Map<String, dynamic>;
+      return DeliveryBoyProfile.fromJson(profileData);
+    } on DioException catch (e) {
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'GetDeliveryProfile mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryRepository',
+      );
+      throw ServerException('Failed to process profile data.');
     }
   }
 
@@ -72,8 +128,16 @@ class DeliveryRepository {
         ApiEndpoints.deliveryChangePassword,
         data: {'oldPassword': oldPassword, 'newPassword': newPassword},
       );
-    } catch (e) {
-      throw Exception('Error changing password: $e');
+    } on DioException catch (e) {
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'ChangePassword error',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryRepository',
+      );
+      throw ServerException('Failed to change password.');
     }
   }
 }

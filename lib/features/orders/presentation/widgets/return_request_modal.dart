@@ -24,7 +24,7 @@ class _ReturnRequestModalState extends State<ReturnRequestModal> {
   String? _selectedReason;
   String _comments = '';
 
-  String? _refundMethod; // For COD: BANK_TRANSFER or WAREHOUSE_COLLECT
+  String? _refundMethod;
   final _bankNameController = TextEditingController();
   final _accountController = TextEditingController();
   final _ifscController = TextEditingController();
@@ -41,6 +41,8 @@ class _ReturnRequestModalState extends State<ReturnRequestModal> {
   bool get _isCashPayment => widget.paymentMethod == 'COD';
 
   void _submitRequest() {
+    FocusScope.of(context).unfocus();
+
     if (_selectedReason == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a reason for the return')),
@@ -88,7 +90,7 @@ class _ReturnRequestModalState extends State<ReturnRequestModal> {
       ),
     );
 
-    Navigator.pop(context); // Close the modal
+    Navigator.pop(context);
   }
 
   @override
@@ -149,7 +151,6 @@ class _ReturnRequestModalState extends State<ReturnRequestModal> {
             ),
             const SizedBox(height: 10),
 
-            // 🟢 FIXED: Wrapped the Return Reasons in a RadioGroup
             RadioGroup<String>(
               groupValue: _selectedReason,
               onChanged: (val) => setState(() => _selectedReason = val),
@@ -193,7 +194,6 @@ class _ReturnRequestModalState extends State<ReturnRequestModal> {
               ),
               const SizedBox(height: 10),
 
-              // 🟢 FIXED: Wrapped the Refund Methods in a RadioGroup
               RadioGroup<String>(
                 groupValue: _refundMethod,
                 onChanged: (val) => setState(() => _refundMethod = val),

@@ -8,12 +8,12 @@ class DeliveryTasksResponse {
     return DeliveryTasksResponse(
       active:
           (json['active'] as List?)
-              ?.map((e) => DeliveryTask.fromJson(e))
+              ?.map((e) => DeliveryTask.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       history:
           (json['history'] as List?)
-              ?.map((e) => DeliveryTask.fromJson(e))
+              ?.map((e) => DeliveryTask.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
     );
@@ -56,23 +56,35 @@ class DeliveryTask {
   factory DeliveryTask.fromJson(Map<String, dynamic> json) {
     return DeliveryTask(
       assignmentId: json['assignmentId'].toString(),
-      status: json['status'] ?? '',
-      type: json['type'] ?? 'DELIVERY',
-      cashToCollect: (json['cashToCollect'] ?? 0).toDouble(),
-      cashToRefund: (json['cashToRefund'] ?? 0).toDouble(),
-      amount: (json['amount'] ?? 0).toDouble(),
-      paymentMethod: json['paymentMethod'] ?? '',
+      status: json['status']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'DELIVERY',
+
+      // PROD FIX: Safely cast to num first to prevent int-to-double cast crashes
+      cashToCollect: (json['cashToCollect'] as num?)?.toDouble() ?? 0.0,
+      cashToRefund: (json['cashToRefund'] as num?)?.toDouble() ?? 0.0,
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+
+      paymentMethod: json['paymentMethod']?.toString() ?? '',
       orderId: json['orderId'].toString(),
-      customerName: json['customerName'] ?? 'Guest',
+      customerName: json['customerName']?.toString() ?? 'Guest',
       address: json['address'] != null
-          ? DeliveryAddress.fromJson(json['address'])
+          ? DeliveryAddress.fromJson(json['address'] as Map<String, dynamic>)
           : null,
-      phone: json['phone'] ?? '',
-      date: DateTime.parse(json['date']),
-      updatedAt: DateTime.parse(json['updatedAt']),
+      phone: json['phone']?.toString() ?? '',
+
+      // PROD FIX: Safe Date parsing to prevent null reference crashes
+      date: json['date'] != null
+          ? DateTime.tryParse(json['date'].toString())?.toLocal() ??
+                DateTime.now()
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString())?.toLocal() ??
+                DateTime.now()
+          : DateTime.now(),
+
       items:
           (json['items'] as List?)
-              ?.map((e) => DeliveryTaskItem.fromJson(e))
+              ?.map((e) => DeliveryTaskItem.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
     );
@@ -85,8 +97,6 @@ class DeliveryTaskItem {
   final int quantity;
   final double price;
   final String status;
-
-  // Added these three to match your backend perfectly for Return Pickups!
   final String? refundStatus;
   final String? returnReason;
   final String? refundMethod;
@@ -112,19 +122,22 @@ class DeliveryTaskItem {
     String extractedImageUrl = '';
     if (productMap['images'] != null &&
         (productMap['images'] as List).isNotEmpty) {
-      extractedImageUrl = productMap['images'][0].toString();
+      extractedImageUrl = productMap['images'].toString();
     }
 
     return DeliveryTaskItem(
       id: json['id'].toString(),
       productId: json['productId'].toString(),
-      quantity: json['quantity'] ?? 1,
-      price: (json['price'] ?? 0).toDouble(),
-      status: json['status'] ?? '',
-      refundStatus: json['refundStatus'],
-      returnReason: json['returnReason'],
-      refundMethod: json['refundMethod'],
-      productName: productMap['name'] ?? 'Unknown Product',
+      quantity: json['quantity'] as int? ?? 1,
+
+      // PROD FIX: Safely parse num
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+
+      status: json['status']?.toString() ?? '',
+      refundStatus: json['refundStatus']?.toString(),
+      returnReason: json['returnReason']?.toString(),
+      refundMethod: json['refundMethod']?.toString(),
+      productName: productMap['name']?.toString() ?? 'Unknown Product',
       productImageUrl: extractedImageUrl,
     );
   }
@@ -132,7 +145,7 @@ class DeliveryTaskItem {
 
 class DeliveryAddress {
   final String addressLine1;
-  final String area; // 🟢 ADDED to match backend
+  final String area;
   final String city;
   final String state;
 
@@ -145,10 +158,10 @@ class DeliveryAddress {
 
   factory DeliveryAddress.fromJson(Map<String, dynamic> json) {
     return DeliveryAddress(
-      addressLine1: json['addressLine1'] ?? '',
-      area: json['area'] ?? '',
-      city: json['city'] ?? '',
-      state: json['state'] ?? '',
+      addressLine1: json['addressLine1']?.toString() ?? '',
+      area: json['area']?.toString() ?? '',
+      city: json['city']?.toString() ?? '',
+      state: json['state']?.toString() ?? '',
     );
   }
 
@@ -185,11 +198,12 @@ class DeliveryBoyProfile {
   factory DeliveryBoyProfile.fromJson(Map<String, dynamic> json) {
     return DeliveryBoyProfile(
       id: json['id'].toString(),
-      name: json['name'] ?? 'Unknown',
-      phone: json['phone'] ?? 'N/A',
-      city: json['city'] ?? 'N/A',
-      state: json['state'] ?? 'N/A',
-      dailyOrderLimit: json['maxOrders'] ?? 0,
+      name: json['name']?.toString() ?? 'Unknown',
+      phone: json['phone']?.toString() ?? 'N/A',
+      city: json['city']?.toString() ?? 'N/A',
+      state: json['state']?.toString() ?? 'N/A',
+      dailyOrderLimit: json['maxOrders'] as int? ?? 0,
+
       assignedAreas:
           (json['assignedAreas'] as List?)?.map((e) => e.toString()).toList() ??
           [],

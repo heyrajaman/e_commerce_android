@@ -17,7 +17,12 @@ class OrderSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // Prevents the user from swiping back to the checkout form
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          context.goNamed('home');
+        }
+      },
       child: MeshGradientBackground(
         child: Scaffold(
           backgroundColor: Colors.transparent,
@@ -29,56 +34,68 @@ class OrderSuccessScreen extends StatelessWidget {
                 children: [
                   // Animated Checkmark
                   const Icon(
-                    Icons.check_circle_outline,
-                    color: Colors.green,
-                    size: 120,
-                  )
+                        Icons.check_circle_outline,
+                        color: Colors.green,
+                        size: 120,
+                      )
                       .animate()
                       .scale(
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.elasticOut,
-                    begin: const Offset(0.5, 0.5),
-                    end: const Offset(1, 1),
-                  )
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.elasticOut,
+                        begin: const Offset(0.5, 0.5),
+                        end: const Offset(1, 1),
+                      )
                       .fadeIn(),
 
                   const SizedBox(height: AppConstants.kSpaceLG),
 
                   // Success Heading
                   Text(
-                    'Order Placed Successfully! 🎉',
-                    style: AppTextStyles.kHeading2,
-                    textAlign: TextAlign.center,
-                  ).animate().fadeIn(delay: const Duration(milliseconds: 300)).slideY(begin: 0.2),
+                        'Order Placed Successfully! 🎉',
+                        style: AppTextStyles.kHeading2,
+                        textAlign: TextAlign.center,
+                      )
+                      .animate()
+                      .fadeIn(delay: const Duration(milliseconds: 300))
+                      .slideY(begin: 0.2),
 
                   const SizedBox(height: AppConstants.kSpaceSM),
                   Text(
                     'Thank you for your purchase.',
-                    style: AppTextStyles.kBodyMedium.copyWith(color: AppColors.kTextSecondary),
+                    style: AppTextStyles.kBodyMedium.copyWith(
+                      color: AppColors.kTextSecondary,
+                    ),
                   ).animate().fadeIn(delay: const Duration(milliseconds: 400)),
 
                   const SizedBox(height: AppConstants.kSpaceXL),
 
                   // Order ID Card
                   GlassContainer(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppConstants.kSpaceXL,
-                      vertical: AppConstants.kSpaceMD,
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Order ID',
-                          style: AppTextStyles.kLabelSmall.copyWith(color: AppColors.kTextSecondary),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppConstants.kSpaceXL,
+                          vertical: AppConstants.kSpaceMD,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          orderId,
-                          style: AppTextStyles.kHeading3.copyWith(color: AppColors.kAccentIndigo),
+                        child: Column(
+                          children: [
+                            Text(
+                              'Order ID',
+                              style: AppTextStyles.kLabelSmall.copyWith(
+                                color: AppColors.kTextSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              orderId,
+                              style: AppTextStyles.kHeading3.copyWith(
+                                color: AppColors.kAccentIndigo,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ).animate().fadeIn(delay: const Duration(milliseconds: 500)).scale(begin: const Offset(0.9, 0.9)),
+                      )
+                      .animate()
+                      .fadeIn(delay: const Duration(milliseconds: 500))
+                      .scale(begin: const Offset(0.9, 0.9)),
 
                   const SizedBox(height: AppConstants.kSpaceXXL),
 
@@ -87,10 +104,9 @@ class OrderSuccessScreen extends StatelessWidget {
                     label: 'Track My Order',
                     icon: Icons.local_shipping_outlined,
                     onPressed: () {
-                      // Note: We'll implement the orders feature later.
-                      // For now, this can act as a placeholder.
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Order tracking coming soon!')),
+                      context.pushNamed(
+                        'order_detail',
+                        pathParameters: {'id': orderId},
                       );
                     },
                   ).animate().fadeIn(delay: const Duration(milliseconds: 600)),
@@ -98,10 +114,12 @@ class OrderSuccessScreen extends StatelessWidget {
                   const SizedBox(height: AppConstants.kSpaceMD),
 
                   TextButton(
-                    onPressed: () => context.go('/home'),
+                    onPressed: () => context.goNamed('home'),
                     child: Text(
                       'Continue Shopping',
-                      style: AppTextStyles.kButtonText.copyWith(color: AppColors.kAccentPurple),
+                      style: AppTextStyles.kButtonText.copyWith(
+                        color: AppColors.kAccentPurple,
+                      ),
                     ),
                   ).animate().fadeIn(delay: const Duration(milliseconds: 700)),
                 ],

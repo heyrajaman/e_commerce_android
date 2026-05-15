@@ -1,3 +1,4 @@
+import 'dart:developer' as developer; // PROD FIX: Secure logging
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -13,28 +14,33 @@ class ProfileRepository {
   ProfileRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
   String _extractErrorMessage(DioException e) {
-    if (e.response?.data != null && e.response?.data is Map) {
-      final responseData = e.response!.data as Map;
+    if (e.response?.data != null && e.response?.data is Map<String, dynamic>) {
+      final responseData = e.response!.data as Map<String, dynamic>;
       if (responseData['message'] != null) {
         return responseData['message'].toString();
       }
     }
-    return e.message ?? 'An unknown error occurred';
+    return e.message ?? 'An unknown network error occurred';
   }
 
   Future<UserModel> getProfile() async {
     try {
       final response = await _apiClient.dio.get('/api/auth/me');
-      final data = response.data['user'] ?? response.data;
+
+      // SONARQUBE FIX: Explicit type casting
+      final Map<String, dynamic> data = response.data['user'] ?? response.data;
       return UserModel.fromJson(data);
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(
-              e.response?.data['message'] ?? 'Failed to fetch profile',
-            );
-    } catch (e) {
-      throw ServerException(e.toString());
+      // PROD UX FIX: Consistent error extraction
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'GetProfile mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileRepository',
+      );
+      throw ServerException('Failed to process profile data.');
     }
   }
 
@@ -60,16 +66,18 @@ class ProfileRepository {
         options: Options(contentType: 'multipart/form-data'),
       );
 
-      final data = response.data['user'] ?? response.data;
+      final Map<String, dynamic> data = response.data['user'] ?? response.data;
       return UserModel.fromJson(data);
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(
-              e.response?.data['message'] ?? 'Failed to update profile',
-            );
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'UpdateProfile mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileRepository',
+      );
+      throw ServerException('Failed to update profile.');
     }
   }
 
@@ -80,26 +88,37 @@ class ProfileRepository {
         data: {'oldPassword': oldPassword, 'newPassword': newPassword},
       );
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(
-              e.response?.data['message'] ?? 'Failed to change password',
-            );
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'ChangePassword error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileRepository',
+      );
+      throw ServerException('Failed to change password.');
     }
   }
 
   Future<List<AddressModel>> getAddresses() async {
     try {
       final response = await _apiClient.dio.get('/api/addresses');
-      return (response.data as List)
-          .map((json) => AddressModel.fromJson(json))
+
+      // SONARQUBE FIX: Safe list mapping
+      final List<dynamic> dataList = response.data as List<dynamic>;
+      return dataList
+          .map((json) => AddressModel.fromJson(json as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
-      throw ServerException(e.toString());
+    } catch (e, stack) {
+      developer.log(
+        'GetAddresses mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileRepository',
+      );
+      throw ServerException('Failed to load addresses.');
     }
   }
 
@@ -121,11 +140,19 @@ class ProfileRepository {
           'isDefault': isDefault,
         },
       );
-      return AddressModel.fromJson(response.data['address']);
+
+      final Map<String, dynamic> data = response.data['address'];
+      return AddressModel.fromJson(data);
     } on DioException catch (e) {
       throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
-      throw ServerException(e.toString());
+    } catch (e, stack) {
+      developer.log(
+        'AddAddress mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileRepository',
+      );
+      throw ServerException('Failed to add address.');
     }
   }
 
@@ -134,8 +161,14 @@ class ProfileRepository {
       await _apiClient.dio.delete('/api/addresses/$id');
     } on DioException catch (e) {
       throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
-      throw ServerException(e.toString());
+    } catch (e, stack) {
+      developer.log(
+        'DeleteAddress error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileRepository',
+      );
+      throw ServerException('Failed to delete address.');
     }
   }
 }

@@ -28,6 +28,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
 
   void _onLogin() {
+    // PROD UX FIX: Dismiss the keyboard to reveal loading states and inline errors smoothly
+    FocusScope.of(context).unfocus();
+
     if (_formKey.currentState?.saveAndValidate() ?? false) {
       final values = _formKey.currentState!.value;
       context.read<AuthBloc>().add(
@@ -123,18 +126,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: AppConstants.kSpaceMD),
 
-                          // BlocConsumer updated to show error in UI instead of Toast
                           BlocConsumer<AuthBloc, AuthState>(
                             listener: (context, state) {
-                              if (state is AuthAuthenticated) {
-                                context.go('/home');
-                              }
-                              // Removed the Fluttertoast error popup from here!
+                              // PROD ROUTING FIX: Removed context.go('/home') from here.
+                              // Our GoRouter 'redirect' logic natively handles the automatic push
+                              // to the correct dashboard based on the user role.
                             },
                             builder: (context, state) {
                               return Column(
                                 children: [
-                                  // 🟢 CRITICAL FIX: If there is an error, show it here in the UI!
                                   if (state is AuthError)
                                     Padding(
                                       padding: const EdgeInsets.only(
@@ -211,7 +211,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Navigation to Register Screen
               TextButton(
-                onPressed: () => context.push('/register'),
+                // SonarQube FIX: Using named routes to prevent magic string typo crashes
+                onPressed: () => context.pushNamed('register'),
                 child: Text.rich(
                   TextSpan(
                     text: "Don't have an account? ",
@@ -233,12 +234,12 @@ class _LoginScreenState extends State<LoginScreen> {
               Center(
                 child: TextButton.icon(
                   onPressed: () {
-                    context.push('/delivery-login');
+                    // SonarQube FIX: Using named routes
+                    context.pushNamed('delivery_login');
                   },
                   icon: const Icon(
                     Icons.local_shipping_outlined,
                     color: Colors.deepOrangeAccent,
-                    // A distinct color for delivery
                     size: 22,
                   ),
                   label: const Text(
@@ -258,14 +259,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     backgroundColor: Colors.deepOrangeAccent.withValues(
                       alpha: 0.05,
                     ),
-                    // Soft tint
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      // Smooth rounded corners
                       side: BorderSide(
-                        color: Colors.deepOrangeAccent.withValues(
-                          alpha: 0.3,
-                        ), // Subtle border
+                        color: Colors.deepOrangeAccent.withValues(alpha: 0.3),
                       ),
                     ),
                     elevation: 0,

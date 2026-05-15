@@ -36,7 +36,10 @@ class ProfilePasswordChangeRequested extends ProfileEvent {
   List<Object?> get props => [oldPassword, newPassword];
 }
 
-class ProfileAddressesFetchRequested extends ProfileEvent {}
+class ProfileAddressesFetchRequested extends ProfileEvent {
+  // PROD MEMORY FIX: Added const constructor to prevent memory reallocation
+  const ProfileAddressesFetchRequested();
+}
 
 class ProfileAddressAddRequested extends ProfileEvent {
   final String addressLine1;
@@ -60,7 +63,8 @@ class ProfileAddressAddRequested extends ProfileEvent {
 class ProfileAddressDeleteRequested extends ProfileEvent {
   final String addressId;
 
-  const ProfileAddressDeleteRequested(this.addressId);
+  // SONARQUBE FIX: Converted to named parameter for consistency across events
+  const ProfileAddressDeleteRequested({required this.addressId});
 
   @override
   List<Object?> get props => [addressId];

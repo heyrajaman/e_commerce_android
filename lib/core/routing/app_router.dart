@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,16 +8,16 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
-import '../../features/auth/presentation/screens/delivery_login_screen.dart'; // NEW
+import '../../features/auth/presentation/screens/delivery_login_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/checkout/presentation/screens/checkout_screen.dart';
 import '../../features/checkout/presentation/screens/order_success_screen.dart';
-import '../../features/delivery/data/models/delivery_task_model.dart'; // NEW
-import '../../features/delivery/presentation/screens/delivery_dashboard_screen.dart'; // NEW
-import '../../features/delivery/presentation/screens/delivery_profile_screen.dart'; // NEW
-import '../../features/delivery/presentation/screens/delivery_task_detail_screen.dart'; // NEW
+import '../../features/delivery/data/models/delivery_task_model.dart';
+import '../../features/delivery/presentation/screens/delivery_dashboard_screen.dart';
+import '../../features/delivery/presentation/screens/delivery_profile_screen.dart';
+import '../../features/delivery/presentation/screens/delivery_task_detail_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/orders/presentation/screens/orders_screen.dart';
@@ -34,10 +37,19 @@ class AppRouter {
       navigatorKey: _rootNavigatorKey,
       initialLocation: '/',
       refreshListenable: GoRouterRefreshStream(authBloc.stream),
+
+      errorBuilder: (context, state) {
+        developer.log(
+          'Invalid route accessed: ${state.uri.toString()}',
+          name: 'AppRouter_Error',
+          error: state.error,
+        );
+        return const SplashScreen();
+      },
+
       redirect: (context, state) {
         final authState = authBloc.state;
 
-        // 1. ADDED /delivery-login to the auth routes check
         final isAuthRoute =
             state.matchedLocation == '/login' ||
             state.matchedLocation == '/register' ||
@@ -58,19 +70,18 @@ class AppRouter {
           final role = authState.user.role;
           final isDeliveryBoy = role == 'delivery_boy';
 
-          // 2. Routing logic based on role when hitting splash or auth screens
           if (isAuthRoute || isSplash) {
             if (isDeliveryBoy) {
-              return '/delivery-dashboard'; // Route Delivery Boys here
+              return '/delivery-dashboard';
             } else {
-              return '/home'; // Route Customers here
+              return '/home';
             }
           }
 
-          // 3. Security: Prevent customers from accessing delivery routes and vice versa
           final isGoingToDelivery = state.matchedLocation.startsWith(
             '/delivery',
           );
+
           if (isDeliveryBoy && !isGoingToDelivery) {
             return '/delivery-dashboard';
           } else if (!isDeliveryBoy && isGoingToDelivery) {
@@ -81,54 +92,59 @@ class AppRouter {
         return null;
       },
       routes: [
-        // --- Splash & Auth (Full Screen) ---
         GoRoute(
           path: '/',
+          name: 'splash',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const SplashScreen(),
         ),
         GoRoute(
           path: '/login',
+          name: 'login',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const LoginScreen(),
         ),
         GoRoute(
           path: '/register',
+          name: 'register',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const RegisterScreen(),
         ),
-
-        // --- NEW: Delivery Login Route ---
         GoRoute(
           path: '/delivery-login',
+          name: 'delivery_login',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const DeliveryLoginScreen(),
         ),
-
-        // --- NEW: Delivery Dashboard Route (Full Screen, bypasses bottom nav) ---
         GoRoute(
           path: '/delivery-dashboard',
+          name: 'delivery_dashboard',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const DeliveryDashboardScreen(),
         ),
-
         GoRoute(
           path: '/delivery-task-details',
+          name: 'delivery_task_details',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
-            // Read the task we passed in the button's 'extra' parameter
+            if (state.extra is! DeliveryTask) {
+              developer.log(
+                'Attempted to navigate to task details without valid DeliveryTask extra.',
+                name: 'AppRouter',
+              );
+              return const DeliveryDashboardScreen();
+            }
             final task = state.extra as DeliveryTask;
             return DeliveryTaskDetailScreen(task: task);
           },
         ),
-
         GoRoute(
           path: '/delivery-profile',
+          name: 'delivery_profile',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const DeliveryProfileScreen(),
         ),
 
-        // --- The Bottom Navigation Shell ---
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return MainLayoutScreen(navigationShell: navigationShell);
@@ -138,6 +154,7 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/home',
+                  name: 'home',
                   builder: (context, state) => const HomeScreen(),
                 ),
               ],
@@ -146,13 +163,15 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/shop',
+                  name: 'shop',
                   builder: (context, state) => const ShopScreen(),
                   routes: [
                     GoRoute(
                       path: 'product/:id',
+                      name: 'product_details',
                       parentNavigatorKey: _rootNavigatorKey,
                       builder: (context, state) => ProductDetailsScreen(
-                        productId: state.pathParameters['id']!,
+                        productId: state.pathParameters['id'] ?? '',
                       ),
                     ),
                   ],
@@ -163,18 +182,21 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/cart',
+                  name: 'cart',
                   builder: (context, state) => const CartScreen(),
                   routes: [
                     GoRoute(
                       path: 'checkout',
+                      name: 'checkout',
                       parentNavigatorKey: _rootNavigatorKey,
                       builder: (context, state) => const CheckoutScreen(),
                     ),
                     GoRoute(
                       path: 'order-success/:id',
+                      name: 'order_success',
                       parentNavigatorKey: _rootNavigatorKey,
                       builder: (context, state) => OrderSuccessScreen(
-                        orderId: state.pathParameters['id']!,
+                        orderId: state.pathParameters['id'] ?? '',
                       ),
                     ),
                   ],
@@ -185,6 +207,7 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/profile',
+                  name: 'profile',
                   builder: (context, state) => const ProfileScreen(),
                 ),
               ],
@@ -192,20 +215,23 @@ class AppRouter {
           ],
         ),
 
-        // --- Order & Profile Screens (Full Screen) ---
         GoRoute(
           path: '/orders',
+          name: 'orders',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const OrdersScreen(),
         ),
         GoRoute(
           path: '/orders/:id',
+          // PROD ROUTING FIX: Matched the name used in your UI dispatches
+          name: 'order_details',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) =>
-              OrderDetailScreen(orderId: state.pathParameters['id']!),
+              OrderDetailScreen(orderId: state.pathParameters['id'] ?? ''),
         ),
         GoRoute(
           path: '/addresses',
+          name: 'addresses',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const AddressesScreen(),
         ),
@@ -214,7 +240,6 @@ class AppRouter {
   }
 }
 
-// --- Inline Splash Screen ---
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -242,12 +267,11 @@ class _SplashScreenState extends State<SplashScreen> {
 }
 
 class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
+  GoRouterRefreshStream(Stream<AuthState> stream) {
+    _subscription = stream.listen((_) => notifyListeners());
   }
 
-  late final dynamic _subscription;
+  late final StreamSubscription<AuthState> _subscription;
 
   @override
   void dispose() {

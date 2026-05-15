@@ -1,3 +1,5 @@
+import 'dart:developer' as developer; // PROD FIX: Secure logging
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -10,8 +12,7 @@ import 'profile_state.dart';
 
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final ProfileRepository _profileRepository;
-  final AuthBloc
-  _authBloc; // Injected to easily force a logout on password change
+  final AuthBloc _authBloc;
 
   ProfileBloc({
     required ProfileRepository profileRepository,
@@ -37,7 +38,13 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     try {
       final user = await _profileRepository.getProfile();
       emit(ProfileLoaded(user));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Profile fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileBloc',
+      );
       emit(ProfileError(e.toString()));
     }
   }
@@ -46,7 +53,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     ProfileUpdateRequested event,
     Emitter<ProfileState> emit,
   ) async {
-    // Keep the current user data visible while updating
     if (state is ProfileLoaded) {
       emit(ProfileUpdating((state as ProfileLoaded).user));
     } else if (state is ProfileUpdateSuccess) {
@@ -54,7 +60,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     }
 
     try {
-      // CRITICAL FIX: Only pass email and imageFile (2 arguments)
       final updatedUser = await _profileRepository.updateProfile(
         event.email,
         event.imageFile,
@@ -67,8 +72,13 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         backgroundColor: Colors.green.shade600,
         textColor: Colors.white,
       );
-    } catch (e) {
-      // Revert to loaded state on error so the UI doesn't break
+    } catch (e, stack) {
+      developer.log(
+        'Profile update failed',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileBloc',
+      );
       if (state is ProfileUpdating) {
         emit(ProfileLoaded((state as ProfileUpdating).user));
       } else {
@@ -87,12 +97,16 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     ProfilePasswordChangeRequested event,
     Emitter<ProfileState> emit,
   ) async {
-    // Capture current user so we don't lose the profile view during the network call
     final currentUser = (state is ProfileLoaded)
         ? (state as ProfileLoaded).user
         : (state is ProfileUpdateSuccess
               ? (state as ProfileUpdateSuccess).user
               : null);
+
+    // PROD UX FIX: Emit the updating state so the UI button shows a loading spinner!
+    if (currentUser != null) {
+      emit(ProfileUpdating(currentUser));
+    }
 
     try {
       await _profileRepository.changePassword(
@@ -108,9 +122,14 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         textColor: Colors.white,
       );
 
-      // Force user to log in again with their new credentials
       _authBloc.add(const AuthLogoutRequested());
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Password change failed',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileBloc',
+      );
       if (currentUser != null) {
         emit(ProfileLoaded(currentUser));
       } else {
@@ -133,7 +152,13 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     try {
       final addresses = await _profileRepository.getAddresses();
       emit(ProfileAddressesLoaded(addresses));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Addresses fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileBloc',
+      );
       emit(ProfileError(e.toString()));
     }
   }
@@ -152,8 +177,14 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         event.isDefault,
       );
       emit(const ProfileAddressActionSuccess("Address added successfully!"));
-      add(ProfileAddressesFetchRequested()); // Refresh the list
-    } catch (e) {
+      add(ProfileAddressesFetchRequested());
+    } catch (e, stack) {
+      developer.log(
+        'Address add failed',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileBloc',
+      );
       emit(ProfileError(e.toString()));
     }
   }
@@ -166,8 +197,14 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     try {
       await _profileRepository.deleteAddress(event.addressId);
       emit(const ProfileAddressActionSuccess("Address deleted."));
-      add(ProfileAddressesFetchRequested()); // Refresh the list
-    } catch (e) {
+      add(ProfileAddressesFetchRequested());
+    } catch (e, stack) {
+      developer.log(
+        'Address delete failed',
+        error: e,
+        stackTrace: stack,
+        name: 'ProfileBloc',
+      );
       emit(ProfileError(e.toString()));
     }
   }

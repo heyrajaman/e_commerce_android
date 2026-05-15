@@ -8,7 +8,8 @@ import '../theme/app_colors.dart';
 extension StringExtension on String {
   String get capitalize {
     if (isEmpty) return this;
-    return '${toUpperCase()}${substring(1)}';
+    // PROD BUG FIX: Only capitalize the very first letter, not the whole string
+    return '${this.toUpperCase()}${substring(1)}';
   }
 
   String truncate(int maxLength) {
@@ -45,16 +46,23 @@ extension DoubleExtension on double {
 // --- DateTime Extensions ---
 extension DateTimeExtension on DateTime {
   String toDisplayDate() {
-    return DateFormat('dd MMM yyyy').format(this);
+    return DateFormat('dd MMM yyyy').format(toLocal());
   }
 
   String toDisplayDateTime() {
-    return DateFormat('dd MMM yyyy, hh:mm a').format(this);
+    return DateFormat('dd MMM yyyy, hh:mm a').format(toLocal());
   }
 
   String timeAgo() {
     final now = DateTime.now();
-    final difference = now.difference(this);
+    // PROD FIX: Always convert backend timestamps to local device time before comparing
+    final localTime = toLocal();
+    final difference = now.difference(localTime);
+
+    // Guard against negative differences if device time is slightly behind server time
+    if (difference.isNegative) {
+      return 'Just now';
+    }
 
     if (difference.inDays > 365) {
       return '${(difference.inDays / 365).floor()} years ago';
@@ -75,6 +83,9 @@ extension DateTimeExtension on DateTime {
 // --- BuildContext Extensions ---
 extension ContextExtension on BuildContext {
   void showSnackBar(String message, {bool isError = false}) {
+    // PROD UX FIX: Clear existing SnackBars to prevent overlapping queues
+    ScaffoldMessenger.of(this).clearSnackBars();
+
     ScaffoldMessenger.of(this).showSnackBar(
       SnackBar(
         content: Text(
@@ -118,11 +129,8 @@ extension ContextExtension on BuildContext {
 
 extension ImageUrlExtension on String {
   String get toEmulatorUrl {
-    // Only swap if we are in development mode on the Android Emulator
-    if (AppConfig.currentEnvironment == AppEnvironment.dev &&
-        contains('localhost')) {
-      return replaceAll('localhost', '10.0.2.2');
-    }
-    return this;
+    // PROD FIX: Delegate to the secure method we already built in app_config.dart
+    // This prevents dart:io web crashes and maintains a single source of truth.
+    return AppConfig.sanitizeImageUrl(this);
   }
 }

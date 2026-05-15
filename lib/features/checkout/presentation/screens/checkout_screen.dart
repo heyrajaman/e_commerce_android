@@ -1,14 +1,16 @@
+import 'dart:developer' as developer;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
+import '../../../../config/app_config.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_constants.dart';
@@ -46,7 +48,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Map<String, dynamic>? _savedAddressData;
 
-  // --- Dynamic Shipping State ---
   List<Map<String, dynamic>> _shippingRates = [];
   Map<String, dynamic>? _selectedShippingRate;
   bool _isLoadingRates = true;
@@ -74,7 +75,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _fetchShippingRates() async {
     try {
-      // Adjust the route if your backend shipping rate endpoint differs
       final response = await GetIt.I<ApiClient>().dio.get(
         '/api/orders/shipping/shipping-rates/active',
       );
@@ -97,7 +97,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _isLoadingRates = false;
         });
       }
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Failed to load shipping rates',
+        error: e,
+        stackTrace: stack,
+        name: 'CheckoutScreen',
+      );
       if (mounted) {
         setState(() => _isLoadingRates = false);
       }
@@ -110,6 +116,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _nextStep() {
+    FocusScope.of(context).unfocus();
+
     if (_formKey.currentState?.saveAndValidate() ?? false) {
       _savedAddressData = Map<String, dynamic>.from(
         _formKey.currentState!.value,
@@ -122,14 +130,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  // 👇 ADD THESE THREE FUNCTIONS 👇
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     if (_pendingOrderId == null) return;
 
     setState(() => _isPlacingOrder = true);
 
     try {
-      // 1. Send the exact payload your verifyPayment controller expects
       final verifyPayload = {
         'razorpay_order_id': response.orderId,
         'razorpay_payment_id': response.paymentId,
@@ -137,18 +143,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'orderId': _pendingOrderId,
       };
 
-      // Ensure this route matches your backend routing setup!
       await GetIt.I<ApiClient>().dio.post(
         '/api/orders/payment/verify',
         data: verifyPayload,
       );
 
-      // 2. Clear cart and navigate on success
       if (mounted) {
         context.read<CartBloc>().add(const CartCleared());
-        context.go('/cart/order-success/$_pendingOrderId');
+        context.goNamed(
+          'order_success',
+          pathParameters: {'id': _pendingOrderId!},
+        );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Payment verification failed',
+        error: e,
+        stackTrace: stack,
+        name: 'CheckoutScreen',
+      );
       Fluttertoast.showToast(
         msg: 'Payment verification failed. Please contact support.',
         backgroundColor: AppColors.kError,
@@ -208,7 +221,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       addressData.remove('deliveryArea');
 
       final cart = cartState.cart;
-
       final double subtotal = (cart.subtotal as num).toDouble();
 
       final payload = {
@@ -236,11 +248,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (_selectedPaymentMethod == 'RAZORPAY') {
         _pendingOrderId = orderId;
-
         final razorpayOrder = response.data['razorpayOrder'];
 
         var options = {
-          'key': dotenv.env['RAZORPAY_KEY_ID'] ?? '',
+          'key': AppConfig.razorpayKeyId,
           'amount': razorpayOrder['amount'],
           'name': 'E-Commerce',
           'description': 'Order #$orderId',
@@ -252,18 +263,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       } else {
         if (mounted) {
           context.read<CartBloc>().add(const CartCleared());
-          context.go('/cart/order-success/$orderId');
+          context.goNamed('order_success', pathParameters: {'id': orderId});
         }
       }
-    } on DioException catch (e) {
-      print("❌ BACKEND ERROR: ${e.response?.data}");
+    } on DioException catch (e, stack) {
+      developer.log(
+        'Order placement failed (Dio)',
+        error: e.response?.data,
+        stackTrace: stack,
+        name: 'CheckoutScreen',
+      );
       Fluttertoast.showToast(
         msg: e.response?.data['message'] ?? 'Failed to place order',
         backgroundColor: AppColors.kError,
         textColor: Colors.white,
       );
-    } catch (e) {
-      print("❌ APP ERROR: $e");
+    } catch (e, stack) {
+      developer.log(
+        'Order placement failed (Unknown)',
+        error: e,
+        stackTrace: stack,
+        name: 'CheckoutScreen',
+      );
       Fluttertoast.showToast(
         msg: 'An unexpected error occurred',
         backgroundColor: AppColors.kError,
@@ -316,7 +337,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
-                      // Wrapped in SingleChildScrollView to prevent 141px keyboard overflow
                       SingleChildScrollView(
                         child: _buildShippingStep(isMobile: true),
                       ),
@@ -426,7 +446,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Text('Shipping Details', style: AppTextStyles.kHeading3),
             const SizedBox(height: AppConstants.kSpaceLG),
 
-            // Locked Full Name Field
             CustomTextField(
               name: 'fullName',
               label: 'Full Name',
@@ -436,7 +455,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
-            // Locked Phone Field
             CustomTextField(
               name: 'phone',
               label: 'Phone Number',
@@ -447,7 +465,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
-            // Address Line 1
             CustomTextField(
               name: 'addressLine1',
               label: 'Street Address',
@@ -456,7 +473,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
-            // Dynamic Delivery Area Dropdown
             _isLoadingRates
                 ? const Padding(
                     padding: EdgeInsets.all(16.0),
@@ -484,7 +500,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     validator: (value) =>
                         value == null ? 'Please select a delivery area' : null,
                     items: _shippingRates.map((rate) {
-                      // Change 'areaName' or 'region' to match your DB column
                       final areaName =
                           rate['areaName'] ?? rate['region'] ?? 'Unknown Area';
                       return DropdownMenuItem(
@@ -502,7 +517,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
             const SizedBox(height: AppConstants.kSpaceMD),
 
-            // Locked City and State
             Row(
               children: [
                 Expanded(
@@ -545,6 +559,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Text('Payment Method', style: AppTextStyles.kHeading3),
         const SizedBox(height: AppConstants.kSpaceSM),
 
+        // 🟢 RESTORED: Uses your original RadioGroup pattern which matches Flutter 3.32+
         RadioGroup<String>(
           groupValue: _selectedPaymentMethod,
           onChanged: (val) {
@@ -579,7 +594,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         BlocBuilder<CartBloc, CartState>(
           builder: (context, state) {
             if (state is CartLoaded) {
-              // 1. IRONCLAD CASTS: Force everything to 'num' then to 'double'
               final double subtotal = (state.cart.subtotal as num).toDouble();
 
               final double shippingCost = _selectedShippingRate != null
@@ -615,7 +629,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            // 2. CAST ITEM TOTALS
                             Text(
                               ((item.price * item.quantity) as num)
                                   .toDouble()
@@ -739,7 +752,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             child: Row(
               children: [
-                // ✅ FIXED (NO groupValue, NO onChanged)
+                // 🟢 RESTORED: Removed groupValue and onChanged to satisfy Flutter 3.32+
                 Radio<String>(
                   value: value,
                   activeColor: AppColors.kAccentIndigo,

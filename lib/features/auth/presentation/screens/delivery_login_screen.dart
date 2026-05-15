@@ -29,32 +29,37 @@ class _DeliveryLoginScreenState extends State<DeliveryLoginScreen> {
   }
 
   void _handleLogin() {
+    // PROD UX FIX: Dismiss the keyboard so the user can clearly see the loading indicator
+    FocusScope.of(context).unfocus();
+
     if (_formKey.currentState!.validate()) {
       final phone = _phoneController.text.trim();
       final password = _passwordController.text.trim();
 
-      // Dispatch the event to our AuthBloc
-      context.read<AuthBloc>().add(AuthDeliveryLoginRequested(phone, password));
+      // PROD BUG FIX: Updated to use the new named parameters we established in auth_event.dart
+      context.read<AuthBloc>().add(
+        AuthDeliveryLoginRequested(phone: phone, password: password),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 1. WRAP THE ENTIRE SCREEN IN YOUR BEAUTIFUL BACKGROUND
     return MeshGradientBackground(
       child: Scaffold(
-        // 2. MAKE THE SCAFFOLD TRANSPARENT SO THE MESH GRADIENT SHOWS
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          // Use white or black depending on your mesh gradient colors
           iconTheme: const IconThemeData(color: Colors.black87),
         ),
         body: SafeArea(
           child: BlocConsumer<AuthBloc, AuthState>(
             listener: (context, state) {
               if (state is AuthError) {
+                // PROD UX FIX: Clear any existing SnackBars before showing a new one
+                // to prevent them from stacking up if the user taps the button multiple times.
+                ScaffoldMessenger.of(context).clearSnackBars();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(state.message),
@@ -107,7 +112,6 @@ class _DeliveryLoginScreenState extends State<DeliveryLoginScreen> {
                         controller: _phoneController,
                         prefixIcon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
-                        // Restricts keyboard input to numbers and limits to 10 digits
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(10),
@@ -116,7 +120,6 @@ class _DeliveryLoginScreenState extends State<DeliveryLoginScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your phone number';
                           }
-                          // Validates that exactly 10 digits were entered
                           if (value.length != 10) {
                             return 'Please enter a valid 10-digit mobile number';
                           }

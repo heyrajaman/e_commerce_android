@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 
 class AppValidators {
+  // PROD PERFORMANCE FIX: Compile Regular Expressions exactly once in memory
+  // rather than re-compiling them on every single keystroke.
+  static final RegExp _emailRegExp = RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$');
+  static final RegExp _uppercaseRegExp = RegExp(r'[A-Z]');
+  static final RegExp _numberRegExp = RegExp(r'[0-9]');
+  static final RegExp _specialCharRegExp = RegExp(r'[!@#$%^&*(),.?":{}|<>]');
+  static final RegExp _phoneRegExp = RegExp(r'^[6-9]\d{9}$');
+  static final RegExp _pincodeRegExp = RegExp(r'^[1-9][0-9]{5}$');
+  static final RegExp _nameRegExp = RegExp(r'^[a-zA-Z\s]+$');
+
   // --- Required Field Validator ---
   static FormFieldValidator<String> requiredField(String fieldName) {
     return (value) {
@@ -17,9 +27,7 @@ class AppValidators {
       if (value == null || value.trim().isEmpty) {
         return 'Email is required';
       }
-      // Fixed the redundant character escape '\.' inside the character class
-      final emailRegExp = RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$');
-      if (!emailRegExp.hasMatch(value)) {
+      if (!_emailRegExp.hasMatch(value)) {
         return 'Enter a valid email address';
       }
       return null;
@@ -35,13 +43,13 @@ class AppValidators {
       if (value.length < 8) {
         return 'Password must be at least 8 characters';
       }
-      if (!value.contains(RegExp(r'[A-Z]'))) {
+      if (!_uppercaseRegExp.hasMatch(value)) {
         return 'Must contain at least one uppercase letter';
       }
-      if (!value.contains(RegExp(r'[0-9]'))) {
+      if (!_numberRegExp.hasMatch(value)) {
         return 'Must contain at least one number';
       }
-      if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+      if (!_specialCharRegExp.hasMatch(value)) {
         return 'Must contain at least one special character';
       }
       return null;
@@ -67,9 +75,7 @@ class AppValidators {
       if (value == null || value.trim().isEmpty) {
         return 'Phone number is required';
       }
-      // Indian mobile numbers start with 6-9 and are 10 digits long
-      final phoneRegExp = RegExp(r'^[6-9]\d{9}$');
-      if (!phoneRegExp.hasMatch(value)) {
+      if (!_phoneRegExp.hasMatch(value)) {
         return 'Enter a valid 10-digit Indian phone number';
       }
       return null;
@@ -82,9 +88,7 @@ class AppValidators {
       if (value == null || value.trim().isEmpty) {
         return 'Pincode is required';
       }
-      // Indian pincodes are 6 digits and do not start with 0
-      final pincodeRegExp = RegExp(r'^[1-9][0-9]{5}$');
-      if (!pincodeRegExp.hasMatch(value)) {
+      if (!_pincodeRegExp.hasMatch(value)) {
         return 'Enter a valid 6-digit pincode';
       }
       return null;
@@ -100,9 +104,7 @@ class AppValidators {
       if (value.length < 2) {
         return 'Name must be at least 2 characters';
       }
-      // Allows letters and spaces only
-      final nameRegExp = RegExp(r'^[a-zA-Z\s]+$');
-      if (!nameRegExp.hasMatch(value)) {
+      if (!_nameRegExp.hasMatch(value)) {
         return 'Name cannot contain special characters or numbers';
       }
       return null;
@@ -110,7 +112,9 @@ class AppValidators {
   }
 
   // --- Old vs New Password Validator ---
-  static FormFieldValidator<String> oldNewPasswordDifferent(String oldPassword) {
+  static FormFieldValidator<String> oldNewPasswordDifferent(
+    String oldPassword,
+  ) {
     return (value) {
       if (value == null || value.isEmpty) {
         return 'New password is required';

@@ -1,3 +1,5 @@
+import 'dart:developer' as developer; // PROD FIX: Secure logging
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/delivery_task_model.dart';
@@ -32,9 +34,15 @@ class DeliveryBloc extends Bloc<DeliveryEvent, DeliveryState> {
           activeFilter: 'All',
         ),
       );
-    } catch (e) {
-      final errorMsg = e.toString().replaceAll('Exception: ', '');
-      emit(DeliveryError(errorMsg));
+    } catch (e, stack) {
+      developer.log(
+        'Delivery tasks fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryBloc',
+      );
+      // SONARQUBE FIX: Removed hacky string manipulation since the repo now throws clean ServerExceptions
+      emit(DeliveryError(e.toString()));
     }
   }
 
@@ -42,6 +50,12 @@ class DeliveryBloc extends Bloc<DeliveryEvent, DeliveryState> {
     UpdateDeliveryTaskStatus event,
     Emitter<DeliveryState> emit,
   ) async {
+    // PROD UX FIX: Cache the current state so we don't destroy the UI if the update fails
+    DeliveryLoaded? previousState;
+    if (state is DeliveryLoaded) {
+      previousState = state as DeliveryLoaded;
+    }
+
     emit(DeliveryStatusUpdating());
     try {
       await repository.updateTaskStatus(
@@ -52,15 +66,22 @@ class DeliveryBloc extends Bloc<DeliveryEvent, DeliveryState> {
       );
 
       emit(const DeliveryStatusUpdated("Task status updated!"));
-
-      // Immediately fetch the tasks again so the UI refreshes
       add(FetchDeliveryTasks());
-    } catch (e) {
-      final errorMsg = e.toString().replaceAll('Exception: ', '');
-      emit(DeliveryError(errorMsg));
+    } catch (e, stack) {
+      developer.log(
+        'Update task status failed',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryBloc',
+      );
+      emit(DeliveryError(e.toString()));
 
-      // If it fails, fetch tasks again to reset the UI
-      add(FetchDeliveryTasks());
+      // If we had a previous state, restore it immediately so the screen doesn't stay blank
+      if (previousState != null) {
+        emit(previousState);
+      } else {
+        add(FetchDeliveryTasks());
+      }
     }
   }
 
@@ -72,9 +93,14 @@ class DeliveryBloc extends Bloc<DeliveryEvent, DeliveryState> {
     try {
       final qrString = await repository.getDeliveryQRCode(event.orderId);
       emit(DeliveryQRLoaded(qrString: qrString));
-    } catch (e) {
-      final errorMsg = e.toString().replaceAll('Exception: ', '');
-      emit(DeliveryQRError(errorMsg));
+    } catch (e, stack) {
+      developer.log(
+        'QR Code fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryBloc',
+      );
+      emit(DeliveryQRError(e.toString()));
     }
   }
 
@@ -89,10 +115,8 @@ class DeliveryBloc extends Bloc<DeliveryEvent, DeliveryState> {
       if (event.filter == 'All') {
         filtered = currentState.allActiveTasks;
       } else {
-        // Map the UI filter names to your backend exact statuses
         String targetStatus = '';
 
-        // 🟢 FIX 3: Added curly braces { } to satisfy the linter
         if (event.filter == 'Assigned') {
           targetStatus = 'ASSIGNED';
         }
@@ -125,8 +149,14 @@ class DeliveryBloc extends Bloc<DeliveryEvent, DeliveryState> {
     try {
       final profile = await repository.getDeliveryProfile();
       emit(DeliveryProfileLoaded(profile: profile));
-    } catch (e) {
-      emit(DeliveryError(e.toString().replaceAll('Exception: ', '')));
+    } catch (e, stack) {
+      developer.log(
+        'Profile fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryBloc',
+      );
+      emit(DeliveryError(e.toString()));
     }
   }
 
@@ -141,11 +171,16 @@ class DeliveryBloc extends Bloc<DeliveryEvent, DeliveryState> {
         newPassword: event.newPassword,
       );
       emit(const DeliveryPasswordChanged("Password updated successfully!"));
-      // Fetch profile again to reset the state back to loaded
       add(FetchDeliveryProfile());
-    } catch (e) {
-      emit(DeliveryError(e.toString().replaceAll('Exception: ', '')));
-      add(FetchDeliveryProfile()); // Reset UI
+    } catch (e, stack) {
+      developer.log(
+        'Password change failed',
+        error: e,
+        stackTrace: stack,
+        name: 'DeliveryBloc',
+      );
+      emit(DeliveryError(e.toString()));
+      add(FetchDeliveryProfile());
     }
   }
 }

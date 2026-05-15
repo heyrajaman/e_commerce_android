@@ -22,13 +22,12 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // 1. Fetch tasks immediately when the dashboard opens
-    context.read<DeliveryBloc>().add(FetchDeliveryTasks());
+    // PROD MEMORY FIX: Added const constructor
+    context.read<DeliveryBloc>().add(const FetchDeliveryTasks());
   }
 
   @override
   Widget build(BuildContext context) {
-    // 2. Use a DefaultTabController for Active and History tabs
     return DefaultTabController(
       length: 2,
       child: MeshGradientBackground(
@@ -42,7 +41,8 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.black87),
                 onPressed: () {
-                  context.read<DeliveryBloc>().add(FetchDeliveryTasks());
+                  // PROD MEMORY FIX: Added const constructor
+                  context.read<DeliveryBloc>().add(const FetchDeliveryTasks());
                 },
               ),
               IconButton(
@@ -52,7 +52,8 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                   size: 26,
                 ),
                 onPressed: () {
-                  context.push('/delivery-profile');
+                  // PROD ROUTING FIX: Use named routes
+                  context.pushNamed('delivery_profile');
                 },
               ),
               IconButton(
@@ -72,7 +73,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
               ],
             ),
           ),
-          // 3. Listen to the DeliveryBloc State
           body: BlocBuilder<DeliveryBloc, DeliveryState>(
             builder: (context, state) {
               if (state is DeliveryLoading || state is DeliveryInitial) {
@@ -101,7 +101,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () => context.read<DeliveryBloc>().add(
-                          FetchDeliveryTasks(),
+                          const FetchDeliveryTasks(),
                         ),
                         child: const Text('Retry'),
                       ),
@@ -131,7 +131,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
     );
   }
 
-  // A helper method to build the list view
   Widget _buildTaskList(
     List<DeliveryTask> tasks, {
     required bool isActive,
@@ -139,7 +138,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   }) {
     return Column(
       children: [
-        // 🟢 Filter Chips (Only show on Active tab)
         if (isActive)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -156,8 +154,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                     selected: isSelected,
                     onSelected: (selected) {
                       if (selected) {
+                        // PROD COMPILE FIX: Switched to named parameters
                         context.read<DeliveryBloc>().add(
-                          FilterActiveTasks(filter),
+                          FilterActiveTasks(filter: filter),
                         );
                       }
                     },
@@ -187,7 +186,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
             ),
           ),
 
-        // 🟢 Task List
         Expanded(
           child: tasks.isEmpty
               ? Center(
@@ -212,15 +210,26 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                  itemCount: tasks.length,
-                  itemBuilder: (context, index) {
-                    final task = tasks[index];
-                    return _TaskCard(
-                      task: task,
-                    ); // (Keep your existing _TaskCard widget below this)
+              // PROD UX FIX: Added Pull-to-refresh capability
+              : RefreshIndicator(
+                  color: Colors.deepOrangeAccent,
+                  onRefresh: () async {
+                    context.read<DeliveryBloc>().add(
+                      const FetchDeliveryTasks(),
+                    );
+                    // Wait briefly to show the spinner gracefully
+                    await Future.delayed(const Duration(seconds: 1));
                   },
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    // Ensures scrolling works even if list is short
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    itemCount: tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = tasks[index];
+                      return _TaskCard(task: task);
+                    },
+                  ),
                 ),
         ),
       ],
@@ -228,7 +237,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   }
 }
 
-// 4. The UI for an individual order card
 class _TaskCard extends StatelessWidget {
   final DeliveryTask task;
 
@@ -246,7 +254,6 @@ class _TaskCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: Status and Type
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -269,7 +276,7 @@ class _TaskCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  task.type, // "DELIVERY" or "RETURN_PICKUP"
+                  task.type,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.grey,
@@ -279,7 +286,6 @@ class _TaskCard extends StatelessWidget {
             ),
             const Divider(height: 24),
 
-            // Customer Info
             Row(
               children: [
                 const Icon(
@@ -299,7 +305,6 @@ class _TaskCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // Phone Info
             Row(
               children: [
                 const Icon(
@@ -313,7 +318,6 @@ class _TaskCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // Address Info
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -333,7 +337,6 @@ class _TaskCard extends StatelessWidget {
             ),
             const Divider(height: 24),
 
-            // Payment Info
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -356,7 +359,8 @@ class _TaskCard extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    context.push('/delivery-task-details', extra: task);
+                    // PROD ROUTING FIX: Safe named routing
+                    context.pushNamed('delivery_task_details', extra: task);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black87,

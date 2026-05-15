@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:dio/dio.dart';
 
@@ -15,14 +16,14 @@ class AuthRepository {
   AuthRepository(this._apiClient, this._storageService);
 
   String _extractErrorMessage(DioException e) {
-    if (e.response?.data != null && e.response?.data is Map) {
-      final responseData = e.response!.data as Map;
+    if (e.response?.data != null && e.response?.data is Map<String, dynamic>) {
+      final responseData = e.response!.data as Map<String, dynamic>;
 
       if (responseData['message'] != null) {
         return responseData['message'].toString();
       }
     }
-    return e.message ?? 'An unknown error occurred';
+    return e.message ?? 'An unknown network error occurred';
   }
 
   Future<UserModel> login(String phone, String password) async {
@@ -32,22 +33,27 @@ class AuthRepository {
         data: {'phone': phone, 'password': password},
       );
 
-      final userData = response.data['user'] ?? response.data;
-      final token = response.data['token'];
+      final Map<String, dynamic> userData =
+          response.data['user'] ?? response.data;
+      final String? token = response.data['token'];
       final user = UserModel.fromJson(userData);
 
       if (token != null) {
         await _storageService.saveToken(token);
       }
-
       await _storageService.saveUserId(user.id);
 
       return user;
     } on DioException catch (e) {
-      // CRITICAL FIX: Use the helper to get the backend message
       throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
-      throw ServerException(e.toString());
+    } catch (e, stack) {
+      developer.log(
+        'Login mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthRepository',
+      );
+      throw ServerException('Failed to process login data.');
     }
   }
 
@@ -68,9 +74,9 @@ class AuthRepository {
         },
       );
 
-      final userData = response.data['user'] ?? response.data;
-      final token = response.data['token'];
-
+      final Map<String, dynamic> userData =
+          response.data['user'] ?? response.data;
+      final String? token = response.data['token'];
       final user = UserModel.fromJson(userData);
 
       if (token != null) {
@@ -81,58 +87,89 @@ class AuthRepository {
       return user;
     } on DioException catch (e) {
       throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
-      throw ServerException(e.toString());
+    } catch (e, stack) {
+      developer.log(
+        'Registration mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthRepository',
+      );
+      throw ServerException('Failed to process registration data.');
     }
   }
 
   Future<void> logout() async {
     try {
       await _apiClient.dio.post(ApiEndpoints.logout);
+    } on DioException catch (e, stack) {
+      developer.log(
+        'Backend logout failed, proceeding with local clear',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthRepository',
+      );
+    } catch (e, stack) {
+      developer.log(
+        'Unexpected error during logout',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthRepository',
+      );
+    } finally {
+      // ALWAYS execute this to ensure the app state resets, even if the API call drops
       await _storageService.deleteToken();
       await _storageService.clearAll();
-    } on DioException catch (e) {
-      throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
-      throw ServerException(e.toString());
     }
   }
 
   Future<UserModel> getMe() async {
     try {
-      // 1. Grab the token from storage
       final token = await _storageService.getToken();
-      if (token == null) throw ServerException('No token found');
+      if (token == null) throw ServerException('No active session found.');
 
-      // 2. Decode the JWT token to find the user's role
       String role = 'user'; // default to customer
-      final parts = token.split('.');
-      if (parts.length == 3) {
-        final payload = base64Url.normalize(parts[1]);
-        final String decoded = utf8.decode(base64Url.decode(payload));
-        final Map<String, dynamic> tokenData = jsonDecode(decoded);
-        role = tokenData['role'] ?? 'user';
+
+      // Safely decode JWT to route correctly without crashing on malformed tokens
+      try {
+        final parts = token.split('.');
+        if (parts.length == 3) {
+          final payload = base64Url.normalize(parts[1]);
+          final String decoded = utf8.decode(base64Url.decode(payload));
+          final Map<String, dynamic> tokenData = jsonDecode(decoded);
+          role = tokenData['role']?.toString() ?? 'user';
+        }
+      } catch (e, stack) {
+        developer.log(
+          'Failed to decode JWT payload safely',
+          error: e,
+          stackTrace: stack,
+          name: 'AuthRepository',
+        );
       }
 
-      // 3. Route to the correct backend endpoint based on the role!
       if (role == 'delivery_boy') {
         final response = await _apiClient.dio.get(ApiEndpoints.deliveryProfile);
 
         final Map<String, dynamic> boyData =
             response.data['profile'] ?? response.data;
-        boyData['role'] =
-            'delivery_boy'; // Re-inject role so the AppRouter knows!
-
+        boyData['role'] = 'delivery_boy';
         return UserModel.fromJson(boyData);
       } else {
         final response = await _apiClient.dio.get(ApiEndpoints.me);
 
-        final userData = response.data['user'] ?? response.data;
+        final Map<String, dynamic> userData =
+            response.data['user'] ?? response.data;
         return UserModel.fromJson(userData);
       }
     } on DioException catch (e) {
       throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'GetMe mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthRepository',
+      );
       throw ServerException(e.toString());
     }
   }
@@ -145,8 +182,14 @@ class AuthRepository {
       );
     } on DioException catch (e) {
       throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
-      throw ServerException(e.toString());
+    } catch (e, stack) {
+      developer.log(
+        'Password change error',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthRepository',
+      );
+      throw ServerException('Failed to change password.');
     }
   }
 
@@ -162,21 +205,23 @@ class AuthRepository {
 
       await _storageService.saveToken(token);
 
-      // Inject the role so our Flutter state management knows how to route them
       boyData['role'] = 'delivery_boy';
       boyData['phone'] = phone;
 
       final user = UserModel.fromJson(boyData);
-
-      // Save the user ID just like your regular login
       await _storageService.saveUserId(user.id);
 
       return user;
     } on DioException catch (e) {
-      // Using your custom error extractor!
       throw ServerException(_extractErrorMessage(e));
-    } catch (e) {
-      throw ServerException(e.toString());
+    } catch (e, stack) {
+      developer.log(
+        'Delivery boy login mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthRepository',
+      );
+      throw ServerException('Failed to process delivery login data.');
     }
   }
 }

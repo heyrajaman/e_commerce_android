@@ -17,15 +17,11 @@ class _DeliveryProfileScreenState extends State<DeliveryProfileScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<DeliveryBloc>().add(FetchDeliveryProfile());
+    // PROD MEMORY FIX: Added const constructor
+    context.read<DeliveryBloc>().add(const FetchDeliveryProfile());
   }
 
   void _showChangePasswordSheet(BuildContext context) {
-    final oldPasswordCtrl = TextEditingController();
-    final newPasswordCtrl = TextEditingController();
-    final confirmPasswordCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -33,138 +29,7 @@ class _DeliveryProfileScreenState extends State<DeliveryProfileScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-            left: 24,
-            right: 24,
-            top: 16,
-          ),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 50,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Change Password',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: oldPasswordCtrl,
-                  obscureText: true,
-                  decoration: _inputDeco(
-                    'Current Password',
-                    Icons.lock_outline,
-                  ),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: newPasswordCtrl,
-                  obscureText: true,
-                  decoration: _inputDeco('New Password', Icons.lock_reset),
-                  validator: (v) => v!.length < 6 ? 'Min 6 characters' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: confirmPasswordCtrl,
-                  obscureText: true,
-                  decoration: _inputDeco(
-                    'Confirm New Password',
-                    Icons.verified_user_outlined,
-                  ),
-                  validator: (v) => v != newPasswordCtrl.text
-                      ? 'Passwords do not match'
-                      : null,
-                ),
-                const SizedBox(height: 24),
-                BlocConsumer<DeliveryBloc, DeliveryState>(
-                  listener: (context, state) {
-                    if (state is DeliveryPasswordChanged) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(state.message),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } else if (state is DeliveryError) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(state.message),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  },
-                  builder: (context, state) {
-                    final isLoading = state is DeliveryPasswordChanging;
-                    return ElevatedButton(
-                      onPressed: isLoading
-                          ? null
-                          : () {
-                              if (formKey.currentState!.validate()) {
-                                context.read<DeliveryBloc>().add(
-                                  ChangeDeliveryPassword(
-                                    oldPassword: oldPasswordCtrl.text,
-                                    newPassword: newPasswordCtrl.text,
-                                  ),
-                                );
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        backgroundColor: Colors.deepOrangeAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              'Update Password',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  InputDecoration _inputDeco(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Colors.grey.shade100,
-      prefixIcon: Icon(icon, color: Colors.grey.shade600),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
+      builder: (context) => const _ChangePasswordSheet(),
     );
   }
 
@@ -183,7 +48,7 @@ class _DeliveryProfileScreenState extends State<DeliveryProfileScreen> {
         ),
         body: BlocBuilder<DeliveryBloc, DeliveryState>(
           builder: (context, state) {
-            if (state is DeliveryProfileLoading) {
+            if (state is DeliveryProfileLoading || state is DeliveryInitial) {
               return const Center(
                 child: CircularProgressIndicator(
                   color: Colors.deepOrangeAccent,
@@ -343,6 +208,161 @@ class _DeliveryProfileScreenState extends State<DeliveryProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// SONARQUBE FIX: Extracted into a StatefulWidget to properly dispose of TextEditingControllers
+class _ChangePasswordSheet extends StatefulWidget {
+  const _ChangePasswordSheet();
+
+  @override
+  State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
+}
+
+class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
+  final _oldPasswordCtrl = TextEditingController();
+  final _newPasswordCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _oldPasswordCtrl.dispose();
+    _newPasswordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
+    super.dispose();
+  }
+
+  InputDecoration _inputDeco(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: Colors.grey.shade100,
+      prefixIcon: Icon(icon, color: Colors.grey.shade600),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        left: 24,
+        right: 24,
+        top: 16,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Change Password',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _oldPasswordCtrl,
+              obscureText: true,
+              decoration: _inputDeco('Current Password', Icons.lock_outline),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _newPasswordCtrl,
+              obscureText: true,
+              decoration: _inputDeco('New Password', Icons.lock_reset),
+              validator: (v) => v!.length < 6 ? 'Min 6 characters' : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _confirmPasswordCtrl,
+              obscureText: true,
+              decoration: _inputDeco(
+                'Confirm New Password',
+                Icons.verified_user_outlined,
+              ),
+              validator: (v) =>
+                  v != _newPasswordCtrl.text ? 'Passwords do not match' : null,
+            ),
+            const SizedBox(height: 24),
+            BlocConsumer<DeliveryBloc, DeliveryState>(
+              listener: (context, state) {
+                if (state is DeliveryPasswordChanged) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else if (state is DeliveryError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              builder: (context, state) {
+                final isLoading = state is DeliveryPasswordChanging;
+                return ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () {
+                          // PROD UX FIX: Dismiss keyboard on submit
+                          FocusScope.of(context).unfocus();
+                          if (_formKey.currentState!.validate()) {
+                            context.read<DeliveryBloc>().add(
+                              ChangeDeliveryPassword(
+                                oldPassword: _oldPasswordCtrl.text,
+                                newPassword: _newPasswordCtrl.text,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    backgroundColor: Colors.deepOrangeAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Update Password',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

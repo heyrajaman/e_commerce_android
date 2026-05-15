@@ -11,7 +11,6 @@ class OrdersFetchRequested extends OrderEvent {
   const OrdersFetchRequested();
 }
 
-// 🟢 NEW: Event to trigger loading the next page
 class OrdersLoadMoreRequested extends OrderEvent {
   const OrdersLoadMoreRequested();
 }
@@ -19,7 +18,7 @@ class OrdersLoadMoreRequested extends OrderEvent {
 class OrderDetailFetchRequested extends OrderEvent {
   final String orderId;
 
-  const OrderDetailFetchRequested(this.orderId);
+  const OrderDetailFetchRequested({required this.orderId});
 
   @override
   List<Object?> get props => [orderId];
@@ -28,7 +27,7 @@ class OrderDetailFetchRequested extends OrderEvent {
 class OrderTrackRequested extends OrderEvent {
   final String orderId;
 
-  const OrderTrackRequested(this.orderId);
+  const OrderTrackRequested({required this.orderId});
 
   @override
   List<Object?> get props => [orderId];
@@ -38,7 +37,8 @@ class OrderCancelRequested extends OrderEvent {
   final String orderId;
   final String reason;
 
-  const OrderCancelRequested(this.orderId, this.reason);
+  // 🟢 PROD COMPILE FIX: Switched to named parameters
+  const OrderCancelRequested({required this.orderId, required this.reason});
 
   @override
   List<Object?> get props => [orderId, reason];
@@ -49,10 +49,15 @@ class OrderItemCancelRequested extends OrderEvent {
   final String itemId;
   final String reason;
 
-  const OrderItemCancelRequested(this.orderId, this.itemId, this.reason);
+  // 🟢 PROD COMPILE FIX: Switched to named parameters
+  const OrderItemCancelRequested({
+    required this.orderId,
+    required this.itemId,
+    required this.reason,
+  });
 
   @override
-  List<Object> get props => [orderId, itemId, reason];
+  List<Object?> get props => [orderId, itemId, reason];
 }
 
 class OrdersRefreshRequested extends OrderEvent {

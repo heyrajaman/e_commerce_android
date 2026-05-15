@@ -23,6 +23,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   void initState() {
     super.initState();
+    // PROD MEMORY FIX: Inherits the const constructor we added earlier
     context.read<CartBloc>().add(const CartFetchRequested());
   }
 
@@ -43,8 +44,21 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
       ),
       AdaptiveDestination(
         label: 'Cart',
-        icon: IgnorePointer(child: CartBadgeWidget(onTap: () {})),
-        activeIcon: IgnorePointer(child: CartBadgeWidget(onTap: () {})),
+        icon: IgnorePointer(
+          // SONARQUBE FIX: Documented empty block to satisfy linter
+          child: CartBadgeWidget(
+            onTap: () {
+              /* Handled by AdaptiveScaffold */
+            },
+          ),
+        ),
+        activeIcon: IgnorePointer(
+          child: CartBadgeWidget(
+            onTap: () {
+              /* Handled by AdaptiveScaffold */
+            },
+          ),
+        ),
       ),
       const AdaptiveDestination(
         label: 'Profile',

@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -43,7 +45,13 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     try {
       final cart = await _cartRepository.getCart();
       emit(CartLoaded(cart));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Cart fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'CartBloc',
+      );
       emit(CartError(e.toString()));
     }
   }
@@ -54,6 +62,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) async {
     final currentCart = _getCurrentCart();
 
+    // Optimistic UI Update (Excellent Implementation)
     if (currentCart != null && state is! CartLoading) {
       final updatedItems = List<CartItemModel>.from(currentCart.items);
       final existingIndex = updatedItems.indexWhere(
@@ -83,9 +92,12 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     }
 
     try {
-      await _cartRepository.addToCart(event.productId, event.quantity);
-
-      add(const CartFetchRequested());
+      // PROD PERFORMANCE FIX: Use the returned CartModel directly to avoid a 2nd API call
+      final updatedCart = await _cartRepository.addToCart(
+        event.productId,
+        event.quantity,
+      );
+      emit(CartLoaded(updatedCart));
 
       if (event.quantity > 0) {
         Fluttertoast.showToast(
@@ -94,9 +106,15 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           textColor: Colors.white,
         );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Add to cart failed',
+        error: e,
+        stackTrace: stack,
+        name: 'CartBloc',
+      );
       if (currentCart != null) {
-        emit(CartLoaded(currentCart));
+        emit(CartLoaded(currentCart)); // Rollback Optimistic Update
       } else {
         emit(CartError(e.toString()));
       }
@@ -115,6 +133,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     final currentCart = _getCurrentCart();
     if (currentCart == null) return;
 
+    // Optimistic Update
     final updatedItems = currentCart.items.map((item) {
       if (item.id == event.cartItemId) {
         return item.copyWith(quantity: event.newQuantity);
@@ -126,10 +145,20 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     emit(CartUpdating(optimisticCart));
 
     try {
-      await _cartRepository.updateCartItem(event.cartItemId, event.newQuantity);
-      add(const CartFetchRequested());
-    } catch (e) {
-      emit(CartLoaded(currentCart));
+      // PROD PERFORMANCE FIX: Use the returned CartModel directly
+      final updatedCart = await _cartRepository.updateCartItem(
+        event.cartItemId,
+        event.newQuantity,
+      );
+      emit(CartLoaded(updatedCart));
+    } catch (e, stack) {
+      developer.log(
+        'Update quantity failed',
+        error: e,
+        stackTrace: stack,
+        name: 'CartBloc',
+      );
+      emit(CartLoaded(currentCart)); // Rollback Optimistic Update
       Fluttertoast.showToast(
         msg: "Failed to update quantity",
         backgroundColor: Colors.red,
@@ -145,6 +174,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     final currentCart = _getCurrentCart();
     if (currentCart == null) return;
 
+    // Optimistic Update
     final updatedItems = currentCart.items
         .where((item) => item.id != event.cartItemId)
         .toList();
@@ -153,9 +183,16 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
     try {
       await _cartRepository.removeCartItem(event.cartItemId);
+      // Repository method returns void, so the manual fetch is required here
       add(const CartFetchRequested());
-    } catch (e) {
-      emit(CartLoaded(currentCart));
+    } catch (e, stack) {
+      developer.log(
+        'Remove item failed',
+        error: e,
+        stackTrace: stack,
+        name: 'CartBloc',
+      );
+      emit(CartLoaded(currentCart)); // Rollback
       Fluttertoast.showToast(
         msg: "Failed to remove item",
         backgroundColor: Colors.red,
@@ -172,8 +209,15 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
     try {
       await _cartRepository.clearCart();
+      // Repository method returns void, so manual fetch is required here
       add(const CartFetchRequested());
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Clear cart failed',
+        error: e,
+        stackTrace: stack,
+        name: 'CartBloc',
+      );
       emit(CartError(e.toString()));
     }
   }

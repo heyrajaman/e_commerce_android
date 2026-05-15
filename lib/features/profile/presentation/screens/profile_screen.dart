@@ -41,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
 
   bool _isPasswordSectionExpanded = false;
-  bool _isEmailEditable = false; // 🟢 Tracks if the user clicked "Edit"
+  bool _isEmailEditable = false;
 
   @override
   void initState() {
@@ -56,12 +56,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (image != null && mounted) {
-      final currentValues = _profileFormKey.currentState?.value ?? {};
-      final email = currentValues['email'] as String?;
-
       final state = context.read<ProfileBloc>().state;
       String? fallbackEmail;
 
+      // SONARQUBE FIX: Simplified logic to grab the safest, most recent email from state directly
       if (state is ProfileLoaded) {
         fallbackEmail = state.user.email;
       } else if (state is ProfileUpdateSuccess) {
@@ -70,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       context.read<ProfileBloc>().add(
         ProfileUpdateRequested(
-          email: email ?? fallbackEmail ?? '',
+          email: fallbackEmail ?? '',
           imageFile: File(image.path),
         ),
       );
@@ -78,17 +76,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _saveProfile() {
+    // PROD UX FIX: Dismiss keyboard
+    FocusScope.of(context).unfocus();
+
     if (_profileFormKey.currentState?.saveAndValidate() ?? false) {
       final values = _profileFormKey.currentState!.value;
       context.read<ProfileBloc>().add(
         ProfileUpdateRequested(email: values['email']),
       );
-      // Disable editing mode after saving
       setState(() => _isEmailEditable = false);
     }
   }
 
   void _changePassword() {
+    // PROD UX FIX: Dismiss keyboard
+    FocusScope.of(context).unfocus();
+
     if (_passwordFormKey.currentState?.saveAndValidate() ?? false) {
       final values = _passwordFormKey.currentState!.value;
       context.read<ProfileBloc>().add(
@@ -206,10 +209,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // =========================================
-  // UI COMPONENTS
-  // =========================================
-
   Widget _buildProfileHeader(UserModel user) {
     return Center(
       child: Column(
@@ -285,7 +284,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildEditProfileForm(UserModel user) {
-    // 🟢 Dynamic validation: Check if email is both typed and different from original
     final currentEmail =
         _profileFormKey.currentState?.fields['email']?.value as String? ??
         user.email;
@@ -294,87 +292,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
         currentEmail.trim().isNotEmpty;
 
     return GlassContainer(
-      padding: const EdgeInsets.all(AppConstants.kSpaceLG),
-      child: FormBuilder(
-        key: _profileFormKey,
-        initialValue: {
-          'name': user.name,
-          'phone': user.phone,
-          'email': user.email,
-        },
-        // 🟢 Rebuild UI on every keystroke so the Save button updates live
-        onChanged: () => setState(() {}),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🟢 Header with Toggleable Edit/Cancel Button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          padding: const EdgeInsets.all(AppConstants.kSpaceLG),
+          child: FormBuilder(
+            key: _profileFormKey,
+            initialValue: {
+              'name': user.name,
+              'phone': user.phone,
+              'email': user.email,
+            },
+            onChanged: () => setState(() {}),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Personal Information', style: AppTextStyles.kHeading3),
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _isEmailEditable = !_isEmailEditable;
-                      // If user cancels, reset the field to original email
-                      if (!_isEmailEditable) {
-                        _profileFormKey.currentState?.fields['email']
-                            ?.didChange(user.email);
-                      }
-                    });
-                  },
-                  icon: Icon(
-                    _isEmailEditable ? Icons.close : Icons.edit,
-                    size: 16,
-                    color: AppColors.kAccentIndigo,
-                  ),
-                  label: Text(
-                    _isEmailEditable ? 'Cancel' : 'Edit',
-                    style: AppTextStyles.kBodyMedium.copyWith(
-                      color: AppColors.kAccentIndigo,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Personal Information',
+                      style: AppTextStyles.kHeading3,
                     ),
-                  ),
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isEmailEditable = !_isEmailEditable;
+                          if (!_isEmailEditable) {
+                            _profileFormKey.currentState?.fields['email']
+                                ?.didChange(user.email);
+                          }
+                        });
+                      },
+                      icon: Icon(
+                        _isEmailEditable ? Icons.close : Icons.edit,
+                        size: 16,
+                        color: AppColors.kAccentIndigo,
+                      ),
+                      label: Text(
+                        _isEmailEditable ? 'Cancel' : 'Edit',
+                        style: AppTextStyles.kBodyMedium.copyWith(
+                          color: AppColors.kAccentIndigo,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppConstants.kSpaceMD),
+
+                CustomTextField(
+                  name: 'name',
+                  label: 'Full Name',
+                  readOnly: true,
+                ),
+                const SizedBox(height: AppConstants.kSpaceMD),
+
+                CustomTextField(
+                  name: 'phone',
+                  label: 'Phone Number',
+                  readOnly: true,
+                ),
+                const SizedBox(height: AppConstants.kSpaceMD),
+
+                CustomTextField(
+                  name: 'email',
+                  label: 'Email Address',
+                  keyboardType: TextInputType.emailAddress,
+                  readOnly: !_isEmailEditable,
+                  validator: FormBuilderValidators.compose([
+                    FormBuilderValidators.required(),
+                    FormBuilderValidators.email(),
+                  ]),
+                ),
+                const SizedBox(height: AppConstants.kSpaceLG),
+
+                PrimaryButton(
+                  label: 'Save Changes',
+                  onPressed: isEmailChanged ? _saveProfile : null,
                 ),
               ],
             ),
-            const SizedBox(height: AppConstants.kSpaceMD),
-
-            CustomTextField(name: 'name', label: 'Full Name', readOnly: true),
-            const SizedBox(height: AppConstants.kSpaceMD),
-
-            CustomTextField(
-              name: 'phone',
-              label: 'Phone Number',
-              readOnly: true,
-            ),
-            const SizedBox(height: AppConstants.kSpaceMD),
-
-            CustomTextField(
-              name: 'email',
-              label: 'Email Address',
-              keyboardType: TextInputType.emailAddress,
-              readOnly: !_isEmailEditable,
-              // 🟢 Editable only when toggled
-              validator: FormBuilderValidators.compose([
-                FormBuilderValidators.required(),
-                FormBuilderValidators.email(),
-              ]),
-            ),
-            const SizedBox(height: AppConstants.kSpaceLG),
-
-            // 🟢 Button is completely disabled (null) unless email is actively changed
-            PrimaryButton(
-              label: 'Save Changes',
-              onPressed: isEmailChanged ? _saveProfile : null,
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: const Duration(milliseconds: 400)).slideY(begin: 0.1);
+          ),
+        )
+        .animate()
+        .fadeIn(delay: const Duration(milliseconds: 400))
+        .slideY(begin: 0.1);
   }
 
   Widget _buildChangePasswordSection() {
-    // 🟢 Dynamic validation for password button
     final oldPw =
         _passwordFormKey.currentState?.fields['oldPassword']?.value
             as String? ??
@@ -388,7 +390,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             as String? ??
         '';
 
-    // Valid if all exist and new matches confirm
     final isPasswordReady =
         oldPw.isNotEmpty &&
         newPw.isNotEmpty &&
@@ -396,82 +397,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
         (newPw == confirmPw);
 
     return GlassContainer(
-      padding: const EdgeInsets.all(AppConstants.kSpaceLG),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () => setState(
-              () => _isPasswordSectionExpanded = !_isPasswordSectionExpanded,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Change Password', style: AppTextStyles.kHeading3),
-                Icon(
-                  _isPasswordSectionExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  color: AppColors.kTextPrimary,
+          padding: const EdgeInsets.all(AppConstants.kSpaceLG),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () => setState(
+                  () =>
+                      _isPasswordSectionExpanded = !_isPasswordSectionExpanded,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Change Password', style: AppTextStyles.kHeading3),
+                    Icon(
+                      _isPasswordSectionExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: AppColors.kTextPrimary,
+                    ),
+                  ],
+                ),
+              ),
+
+              if (_isPasswordSectionExpanded) ...[
+                const SizedBox(height: AppConstants.kSpaceLG),
+                FormBuilder(
+                  key: _passwordFormKey,
+                  onChanged: () => setState(() {}),
+                  child: Column(
+                    children: [
+                      CustomTextField(
+                        name: 'oldPassword',
+                        label: 'Current Password',
+                        isPassword: true,
+                        validator: FormBuilderValidators.required(
+                          errorText: 'Required',
+                        ),
+                      ),
+                      const SizedBox(height: AppConstants.kSpaceMD),
+                      CustomTextField(
+                        name: 'newPassword',
+                        label: 'New Password',
+                        isPassword: true,
+                        validator: AppValidators.password(),
+                      ),
+                      const SizedBox(height: AppConstants.kSpaceMD),
+                      CustomTextField(
+                        name: 'confirmNewPassword',
+                        label: 'Confirm New Password',
+                        isPassword: true,
+                        validator: (val) {
+                          if (val == null || val.isEmpty) return 'Required';
+                          if (val !=
+                              _passwordFormKey
+                                  .currentState
+                                  ?.fields['newPassword']
+                                  ?.value) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppConstants.kSpaceLG),
+                      PrimaryButton(
+                        label: 'Update Password',
+                        backgroundColor: AppColors.kAccentPink,
+                        onPressed: isPasswordReady ? _changePassword : null,
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-
-          if (_isPasswordSectionExpanded) ...[
-            const SizedBox(height: AppConstants.kSpaceLG),
-            FormBuilder(
-              key: _passwordFormKey,
-              // 🟢 Rebuild UI on every keystroke to evaluate password match
-              onChanged: () => setState(() {}),
-              child: Column(
-                children: [
-                  CustomTextField(
-                    name: 'oldPassword',
-                    label: 'Current Password',
-                    isPassword: true,
-                    validator: FormBuilderValidators.required(
-                      errorText: 'Required',
-                    ),
-                  ),
-                  const SizedBox(height: AppConstants.kSpaceMD),
-                  CustomTextField(
-                    name: 'newPassword',
-                    label: 'New Password',
-                    isPassword: true,
-                    validator: AppValidators.password(),
-                  ),
-                  const SizedBox(height: AppConstants.kSpaceMD),
-                  CustomTextField(
-                    name: 'confirmNewPassword',
-                    label: 'Confirm New Password',
-                    isPassword: true,
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Required';
-                      if (val !=
-                          _passwordFormKey
-                              .currentState
-                              ?.fields['newPassword']
-                              ?.value) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppConstants.kSpaceLG),
-                  // 🟢 Button is completely disabled (null) unless all inputs are valid
-                  PrimaryButton(
-                    label: 'Update Password',
-                    backgroundColor: AppColors.kAccentPink,
-                    onPressed: isPasswordReady ? _changePassword : null,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    ).animate().fadeIn(delay: const Duration(milliseconds: 500)).slideY(begin: 0.1);
+        )
+        .animate()
+        .fadeIn(delay: const Duration(milliseconds: 500))
+        .slideY(begin: 0.1);
   }
 
   Widget _buildMenuItems(BuildContext context) {
@@ -480,14 +483,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildMenuCard(
               icon: Icons.receipt_long_outlined,
               title: 'My Orders',
-              onTap: () => context.push('/orders'),
+              // PROD ROUTING FIX: Use named routes
+              onTap: () => context.pushNamed('orders'),
             ),
             const SizedBox(height: AppConstants.kSpaceMD),
             _buildMenuCard(
               icon: Icons.location_on_outlined,
               title: 'My Addresses',
               onTap: () {
-                context.push('/addresses').then((_) {
+                // PROD ROUTING FIX: Use named routes
+                context.pushNamed('addresses').then((_) {
                   if (context.mounted) {
                     context.read<ProfileBloc>().add(
                       const ProfileFetchRequested(),
@@ -496,7 +501,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 });
               },
             ),
-            // 🟢 Notifications and About App Removed as requested!
             const SizedBox(height: AppConstants.kSpaceMD),
             _buildMenuCard(
               icon: Icons.logout,

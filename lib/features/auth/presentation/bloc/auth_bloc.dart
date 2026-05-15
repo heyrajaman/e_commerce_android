@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../shared/services/storage_service.dart';
@@ -37,9 +39,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Token exists, verify it by fetching the user profile
       final user = await _authRepository.getMe();
       emit(AuthAuthenticated(user));
-    } catch (e) {
-      // If token is expired or invalid, clear storage and require login
-      await _storageService.clearAll();
+    } catch (e, stack) {
+      developer.log(
+        'Auth check failed. User may be offline or token invalid.',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthBloc',
+      );
+      // PROD FIX: Do NOT clear storage here! If the user is just offline,
+      // we don't want to delete their session. If the token is actually invalid (401),
+      // the ApiClient interceptor will handle clearing the storage automatically.
       emit(const AuthUnauthenticated());
     }
   }
@@ -51,9 +60,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final user = await _authRepository.login(event.phone, event.password);
-
       emit(AuthAuthenticated(user));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Login failed',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthBloc',
+      );
       emit(AuthError(e.toString()));
     }
   }
@@ -70,9 +84,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         event.password,
         event.phone,
       );
-
       emit(AuthAuthenticated(user));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Registration failed',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthBloc',
+      );
       emit(AuthError(e.toString()));
     }
   }
@@ -83,12 +102,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
+      // The AuthRepository.logout() now safely handles both the API call
+      // AND the local storage clearing inside its own finally block.
       await _authRepository.logout();
-    } catch (_) {
-      // We ignore logout errors (like network failures) to ensure the user
-      // is always cleared out locally regardless of backend reachability.
+    } catch (e, stack) {
+      developer.log(
+        'Logout encountered an error',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthBloc',
+      );
     } finally {
-      await _storageService.clearAll();
       emit(const AuthUnauthenticated());
     }
   }
@@ -104,7 +128,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         event.password,
       );
       emit(AuthAuthenticated(user));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Delivery login failed',
+        error: e,
+        stackTrace: stack,
+        name: 'AuthBloc',
+      );
       emit(AuthError(e.toString()));
     }
   }

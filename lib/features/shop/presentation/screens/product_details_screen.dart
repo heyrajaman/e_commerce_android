@@ -38,8 +38,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   void initState() {
     super.initState();
     _productBloc = context.read<ProductBloc>();
-    // Dispatch event to fetch this specific product's details
-    _productBloc.add(ProductDetailFetchRequested(widget.productId));
+    // PROD FIX: Use named parameter to match the updated ProductEvent
+    _productBloc.add(ProductDetailFetchRequested(productId: widget.productId));
   }
 
   @override
@@ -68,7 +68,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         backgroundColor: Colors.transparent,
         body: BlocBuilder<ProductBloc, ProductState>(
           builder: (context, state) {
-            if (state is ProductDetailLoading) {
+            if (state is ProductDetailLoading || state is ProductInitial) {
               return const Center(
                 child: CircularProgressIndicator(
                   color: AppColors.kAccentIndigo,
@@ -212,7 +212,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                               if (product.images.length > 1)
                                 Positioned(
                                   bottom: 40,
-                                  // Elevated to account for the overlapping container
                                   left: 0,
                                   right: 0,
                                   child: Row(
@@ -251,10 +250,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       SliverToBoxAdapter(
                         child: Transform.translate(
                           offset: const Offset(0, -30),
-                          // Pulls the container up to overlap the image
                           child: GlassContainer(
                             borderRadius: AppConstants.kRadiusXL,
-                            // Top rounded corners
                             padding: const EdgeInsets.all(
                               AppConstants.kSpaceLG,
                             ),
@@ -310,7 +307,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                             decoration: BoxDecoration(
                                               color: AppColors.kAccentPink
                                                   .withValues(alpha: 0.2),
-                                              // Fixed double dot here
                                               borderRadius:
                                                   BorderRadius.circular(
                                                     AppConstants.kRadiusSM,
@@ -410,7 +406,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 100),
-                                // Padding for the bottom cart bar
                               ],
                             ),
                           ),
@@ -468,35 +463,15 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                             ),
                             const SizedBox(width: AppConstants.kSpaceLG),
 
-                            // 🟢 NEW: Integrated CartBloc Consumer
+                            // PROD UX FIX: Simplified to BlocBuilder. The CartBloc handles Toasts globally.
                             Expanded(
-                              child: BlocConsumer<CartBloc, CartState>(
-                                listener: (context, cartState) {
-                                  if (cartState is CartLoaded) {
-                                    // Show success message when added
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Successfully added $_quantity to cart!',
-                                        ),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  } else if (cartState is CartError) {
-                                    // Show error if backend rejects it
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(cartState.message),
-                                        backgroundColor: AppColors.kError,
-                                      ),
-                                    );
-                                  }
-                                },
+                              child: BlocBuilder<CartBloc, CartState>(
                                 builder: (context, cartState) {
                                   return PrimaryButton(
                                     label: 'Add to Cart',
                                     icon: Icons.shopping_bag,
-                                    isLoading: cartState is CartLoading,
+                                    // PROD FIX: Use CartUpdating to show loading spinner properly
+                                    isLoading: cartState is CartUpdating,
                                     onPressed: product.stock > 0
                                         ? () {
                                             context.read<CartBloc>().add(
@@ -506,7 +481,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                               ),
                                             );
                                           }
-                                        : null, // Disable if out of stock
+                                        : null,
                                   );
                                 },
                               ),

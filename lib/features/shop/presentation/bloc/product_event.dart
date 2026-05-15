@@ -23,7 +23,8 @@ class ProductsFetchRequested extends ProductEvent {
 class ProductsSearchChanged extends ProductEvent {
   final String query;
 
-  const ProductsSearchChanged(this.query);
+  // SONARQUBE FIX: Converted to named parameter for consistency
+  const ProductsSearchChanged({required this.query});
 
   @override
   List<Object?> get props => [query];
@@ -33,7 +34,8 @@ class ProductsSearchChanged extends ProductEvent {
 class ProductsCategorySelected extends ProductEvent {
   final String? category;
 
-  const ProductsCategorySelected(this.category);
+  // SONARQUBE FIX: Converted to named parameter for consistency
+  const ProductsCategorySelected({this.category});
 
   @override
   List<Object?> get props => [category];
@@ -43,7 +45,8 @@ class ProductsCategorySelected extends ProductEvent {
 class ProductDetailFetchRequested extends ProductEvent {
   final String productId;
 
-  const ProductDetailFetchRequested(this.productId);
+  // SONARQUBE FIX: Converted to named parameter for consistency
+  const ProductDetailFetchRequested({required this.productId});
 
   @override
   List<Object?> get props => [productId];
@@ -54,7 +57,7 @@ class ProductsRefreshRequested extends ProductEvent {
   const ProductsRefreshRequested();
 }
 
-// Event to restore the home screen list
+/// Event to restore the home screen list
 class RestoreListRequested extends ProductEvent {
   const RestoreListRequested();
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -27,15 +28,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
 
   void _onRegister() {
+    // PROD UX FIX: Dismiss keyboard so the error box or loading indicator is visible
+    FocusScope.of(context).unfocus();
+
     if (_formKey.currentState?.saveAndValidate() ?? false) {
       final values = _formKey.currentState!.value;
 
+      // PROD DATA FIX: Always trim inputs on registration to prevent invisible whitespace bugs in the database
       context.read<AuthBloc>().add(
         AuthRegisterRequested(
-          name: values['name'],
-          email: values['email'],
-          phone: values['phone'],
-          password: values['password'],
+          name: values['name'].toString().trim(),
+          email: values['email'].toString().trim(),
+          phone: values['phone'].toString().trim(),
+          password: values['password'].toString(),
         ),
       );
     }
@@ -118,16 +123,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           CustomTextField(
                             name: 'phone',
                             label: 'Phone Number',
-                            hint: 'Enter your phone number',
+                            hint: 'Enter your 10-digit phone number',
                             prefixIcon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
+                            // PROD DATA FIX: Prevent users from typing spaces, dashes, or overflowing the database limit
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(10),
+                            ],
                             validator: FormBuilderValidators.compose([
                               FormBuilderValidators.required(
                                 errorText: 'Phone number is required',
                               ),
-                              FormBuilderValidators.numeric(
-                                errorText: 'Must be numeric',
-                              ),
+                              // PROD DATA FIX: Enforce exact length
+                              (value) {
+                                if (value != null && value.length != 10) {
+                                  return 'Please enter a valid 10-digit mobile number';
+                                }
+                                return null;
+                              },
                             ]),
                           ),
                           const SizedBox(height: AppConstants.kSpaceMD),
@@ -160,7 +174,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if (value == null || value.isEmpty) {
                                 return 'Please confirm your password';
                               }
-                              // Check if it matches the 'password' field
                               final password = _formKey
                                   .currentState
                                   ?.fields['password']
@@ -173,18 +186,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: AppConstants.kSpaceXL),
 
-                          // BlocConsumer updated to show error in UI instead of Toast
                           BlocConsumer<AuthBloc, AuthState>(
                             listener: (context, state) {
                               if (state is AuthAuthenticated) {
+                                // Using context.go replaces the stack so they can't hit back to return to registration
                                 context.go('/home');
                               }
-                              // Removed the Fluttertoast logic from here
                             },
                             builder: (context, state) {
                               return Column(
                                 children: [
-                                  // 🟢 CRITICAL FIX: The UI Error Box
                                   if (state is AuthError)
                                     Padding(
                                       padding: const EdgeInsets.only(

@@ -67,8 +67,10 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  void _confirmRemoveItem(BuildContext context, String cartItemId) {
-    showDialog(
+  // PROD UX FIX: Returns a Future<bool> so the Dismissible widget waits for the user's answer
+  // instead of snapping closed immediately.
+  Future<bool?> _confirmRemoveItem(BuildContext context) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.kGlassWhite,
@@ -76,13 +78,13 @@ class _CartScreenState extends State<CartScreen> {
         content: const Text('Are you sure you want to remove this item?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, false),
+            // Pass false on cancel
             child: Text('Cancel', style: AppTextStyles.kBodyMedium),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx);
-              context.read<CartBloc>().add(CartItemRemoved(cartItemId));
+              Navigator.pop(ctx, true); // Pass true on confirm
             },
             child: Text(
               'Remove',
@@ -135,6 +137,8 @@ class _CartScreenState extends State<CartScreen> {
         body: BlocConsumer<CartBloc, CartState>(
           listener: (context, state) {
             if (state is CartError) {
+              // PROD UX FIX: Prevent stacked snackbars
+              ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
@@ -188,7 +192,8 @@ class _CartScreenState extends State<CartScreen> {
 
             if ((currentCart == null || currentCart.isEmpty) && !isUpdating) {
               return EmptyStateWidget.emptyCart(
-                onAction: () => context.go('/home'),
+                // PROD ROUTING FIX
+                onAction: () => context.goNamed('home'),
               );
             }
 
@@ -288,7 +293,13 @@ class _CartScreenState extends State<CartScreen> {
         child: const Icon(Icons.delete_outline, color: Colors.white, size: 32),
       ),
       confirmDismiss: (direction) async {
-        _confirmRemoveItem(context, item.id);
+        final bool? shouldRemove = await _confirmRemoveItem(context);
+
+        if (!context.mounted) return false;
+
+        if (shouldRemove == true) {
+          context.read<CartBloc>().add(CartItemRemoved(cartItemId: item.id));
+        }
         return false;
       },
       child: GlassContainer(
@@ -388,7 +399,15 @@ class _CartScreenState extends State<CartScreen> {
                 Icons.delete_outline,
                 color: AppColors.kTextSecondary,
               ),
-              onPressed: () => _confirmRemoveItem(context, item.id),
+              onPressed: () async {
+                final bool? shouldRemove = await _confirmRemoveItem(context);
+                if (!context.mounted) return;
+                if (shouldRemove == true) {
+                  context.read<CartBloc>().add(
+                    CartItemRemoved(cartItemId: item.id),
+                  );
+                }
+              },
             ),
           ],
         ),
@@ -432,9 +451,7 @@ class _CartScreenState extends State<CartScreen> {
         right: isMobile ? 16.0 : 0,
       ),
       child: GlassContainer(
-        borderRadius: isMobile
-            ? AppConstants.kRadiusXL
-            : AppConstants.kRadiusXL,
+        borderRadius: AppConstants.kRadiusXL,
         padding: const EdgeInsets.all(AppConstants.kSpaceLG),
         child: SafeArea(
           top: false,
@@ -486,7 +503,8 @@ class _CartScreenState extends State<CartScreen> {
               PrimaryButton(
                 label: 'Proceed to Checkout',
                 icon: Icons.payment,
-                onPressed: () => context.push('/cart/checkout'),
+                // PROD ROUTING FIX
+                onPressed: () => context.pushNamed('checkout'),
               ),
             ],
           ),

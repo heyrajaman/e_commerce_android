@@ -1,3 +1,5 @@
+import 'dart:developer' as developer; // PROD FIX: Secure logging
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -27,12 +29,9 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     on<ProductDetailFetchRequested>(_onProductDetailFetchRequested);
     on<ProductsRefreshRequested>(_onProductsRefreshRequested);
     on<RestoreListRequested>(_onRestoreListRequested);
-
-    // NEW: Listen for the category fetch event
     on<CategoriesFetchRequested>(_onCategoriesFetchRequested);
   }
 
-  // NEW: Handler for fetching categories
   Future<void> _onCategoriesFetchRequested(
     CategoriesFetchRequested event,
     Emitter<ProductState> emit,
@@ -40,20 +39,22 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     try {
       final categories = await _productRepository.getCategories();
 
-      // If products are already loaded, we just inject the new categories into the state
       if (state is ProductsLoaded) {
         final currentState = state as ProductsLoaded;
         final newState = currentState.copyWith(categories: categories);
         _lastLoadedList = newState;
         emit(newState);
       } else {
-        // If products haven't loaded yet, save categories to our backup
-        // so the product fetcher can grab them in a second
         _lastLoadedList = ProductsLoaded(const [], categories: categories);
       }
-    } catch (e) {
-      // If categories fail to load, we silently fail and it defaults to ['All']
-      print('Categories fetch failed: $e');
+    } catch (e, stack) {
+      // SONARQUBE FIX: Replaced 'print' with secure logging
+      developer.log(
+        'Categories fetch failed, defaulting to [All]',
+        error: e,
+        stackTrace: stack,
+        name: 'ProductBloc',
+      );
     }
   }
 
@@ -72,7 +73,6 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         page: event.page,
       );
 
-      // CRUCIAL: Preserve existing categories so they don't get erased!
       List<String> existingCategories = const ['All'];
       if (state is ProductsLoaded) {
         existingCategories = (state as ProductsLoaded).categories;
@@ -87,7 +87,6 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         final combinedProducts = List.of(currentState.products)
           ..addAll(newProducts);
 
-        // Using our new copyWith method!
         newState = currentState.copyWith(
           products: combinedProducts,
           activeCategory: event.category,
@@ -98,7 +97,6 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         newState = ProductsLoaded(
           newProducts,
           categories: existingCategories,
-          // Inject the preserved categories here
           activeCategory: event.category,
           searchQuery: event.search,
           hasMore: newProducts.isNotEmpty,
@@ -107,7 +105,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
 
       _lastLoadedList = newState;
       emit(newState);
-    } catch (e) {
+    } catch (e, stack) {
+      // PROD FIX: Added stack traces for debugging missing products
+      developer.log(
+        'Products fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'ProductBloc',
+      );
       emit(ProductError(e.toString()));
     }
   }
@@ -154,7 +159,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     try {
       final product = await _productRepository.getProductById(event.productId);
       emit(ProductDetailLoaded(product));
-    } catch (e) {
+    } catch (e, stack) {
+      // PROD FIX: Added stack traces for debugging detail mapping errors
+      developer.log(
+        'Product detail fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'ProductBloc',
+      );
       emit(ProductError(e.toString()));
     }
   }
@@ -163,7 +175,6 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     ProductsRefreshRequested event,
     Emitter<ProductState> emit,
   ) {
-    // When refreshing, we also want to refresh the categories!
     add(const CategoriesFetchRequested());
 
     String? currentCategory;

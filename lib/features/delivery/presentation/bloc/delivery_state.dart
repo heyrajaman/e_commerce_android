@@ -2,16 +2,21 @@ import 'package:equatable/equatable.dart';
 
 import '../../data/models/delivery_task_model.dart';
 
-abstract class DeliveryState extends Equatable {
+// PROD ARCHITECTURE FIX: Upgraded to 'sealed class' for exhaustive matching
+sealed class DeliveryState extends Equatable {
   const DeliveryState();
 
   @override
   List<Object?> get props => [];
 }
 
-class DeliveryInitial extends DeliveryState {}
+class DeliveryInitial extends DeliveryState {
+  const DeliveryInitial();
+}
 
-class DeliveryLoading extends DeliveryState {}
+class DeliveryLoading extends DeliveryState {
+  const DeliveryLoading();
+}
 
 class DeliveryLoaded extends DeliveryState {
   final List<DeliveryTask> allActiveTasks;
@@ -58,7 +63,9 @@ class DeliveryError extends DeliveryState {
   List<Object?> get props => [message];
 }
 
-class DeliveryStatusUpdating extends DeliveryState {}
+class DeliveryStatusUpdating extends DeliveryState {
+  const DeliveryStatusUpdating();
+}
 
 class DeliveryStatusUpdated extends DeliveryState {
   final String message;
@@ -69,7 +76,9 @@ class DeliveryStatusUpdated extends DeliveryState {
   List<Object?> get props => [message];
 }
 
-class DeliveryQRLoading extends DeliveryState {}
+class DeliveryQRLoading extends DeliveryState {
+  const DeliveryQRLoading();
+}
 
 class DeliveryQRLoaded extends DeliveryState {
   final String qrString;
@@ -89,7 +98,9 @@ class DeliveryQRError extends DeliveryState {
   List<Object?> get props => [message];
 }
 
-class DeliveryProfileLoading extends DeliveryState {}
+class DeliveryProfileLoading extends DeliveryState {
+  const DeliveryProfileLoading();
+}
 
 class DeliveryProfileLoaded extends DeliveryState {
   final DeliveryBoyProfile profile;
@@ -100,7 +111,9 @@ class DeliveryProfileLoaded extends DeliveryState {
   List<Object?> get props => [profile];
 }
 
-class DeliveryPasswordChanging extends DeliveryState {}
+class DeliveryPasswordChanging extends DeliveryState {
+  const DeliveryPasswordChanging();
+}
 
 class DeliveryPasswordChanged extends DeliveryState {
   final String message;

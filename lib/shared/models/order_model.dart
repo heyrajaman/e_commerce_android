@@ -6,7 +6,7 @@ enum OrderStatus {
   shipped,
   delivered,
   cancelled,
-  returned; // 🟢 Added 'returned' to the enum
+  returned;
 
   // Helper to parse from JSON string
   static OrderStatus fromString(String status) {

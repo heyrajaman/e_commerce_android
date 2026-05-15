@@ -1,3 +1,5 @@
+import 'dart:developer' as developer; // PROD FIX: Secure logging
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../shared/models/order_model.dart';
@@ -10,7 +12,6 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
   final OrderRepository _orderRepository;
   final ProductRepository _productRepository;
 
-  // Track if a load more request is currently running so we don't spam the API
   bool _isFetchingMore = false;
 
   OrderBloc({
@@ -46,7 +47,13 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
           hasReachedMax: response.currentPage >= response.totalPages,
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Orders fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderBloc',
+      );
       emit(OrderError(e.toString()));
     }
   }
@@ -72,8 +79,14 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
           hasReachedMax: response.currentPage >= response.totalPages,
         ),
       );
-    } catch (e) {
-      // Silently fail
+    } catch (e, stack) {
+      // PROD LOGGING FIX: Do not silently swallow errors. Log them securely while failing gracefully in UI.
+      developer.log(
+        'Load more orders failed',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderBloc',
+      );
     } finally {
       _isFetchingMore = false;
     }
@@ -108,8 +121,14 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
               refundStatus: item.refundStatus,
             ),
           );
-        } catch (e) {
-          enrichedItems.add(item);
+        } catch (e, stack) {
+          developer.log(
+            'Failed to enrich order item ${item.itemId}',
+            error: e,
+            stackTrace: stack,
+            name: 'OrderBloc',
+          );
+          enrichedItems.add(item); // Fallback to raw item if enrichment fails
         }
       }
 
@@ -126,7 +145,13 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       );
 
       emit(OrderDetailLoaded(enrichedOrder));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Order detail fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderBloc',
+      );
       emit(OrderError(e.toString()));
     }
   }
@@ -139,7 +164,13 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       final order = await _orderRepository.trackOrder(event.orderId);
       emit(OrderDetailLoaded(order));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Order track fetch failed',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderBloc',
+      );
       emit(OrderError(e.toString()));
     }
   }
@@ -153,7 +184,13 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       await _orderRepository.cancelOrder(event.orderId, event.reason);
       emit(OrderCancelled(event.orderId));
       add(const OrdersFetchRequested());
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Order cancel failed',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderBloc',
+      );
       emit(OrderError(e.toString()));
     }
   }
@@ -169,8 +206,15 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         event.itemId,
         event.reason,
       );
-      add(OrderDetailFetchRequested(event.orderId));
-    } catch (e) {
+      // PROD COMPILE FIX: Use named parameters
+      add(OrderDetailFetchRequested(orderId: event.orderId));
+    } catch (e, stack) {
+      developer.log(
+        'Order item cancel failed',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderBloc',
+      );
       emit(OrderError(e.toString()));
     }
   }
@@ -188,7 +232,13 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
           hasReachedMax: response.currentPage >= response.totalPages,
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log(
+        'Orders refresh failed',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderBloc',
+      );
       emit(OrderError(e.toString()));
     }
   }
@@ -214,9 +264,15 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         ),
       );
 
-      // Refresh the order details so the UI reflects the new "REQUESTED" status
-      add(OrderDetailFetchRequested(event.orderId));
-    } catch (e) {
+      // PROD COMPILE FIX: Use named parameters
+      add(OrderDetailFetchRequested(orderId: event.orderId));
+    } catch (e, stack) {
+      developer.log(
+        'Order return request failed',
+        error: e,
+        stackTrace: stack,
+        name: 'OrderBloc',
+      );
       emit(OrderReturnRequestFailure(e.toString()));
     }
   }

@@ -15,10 +15,7 @@ class CartItemAdded extends CartEvent {
   final String productId;
   final int quantity;
 
-  const CartItemAdded({
-    required this.productId,
-    required this.quantity,
-  });
+  const CartItemAdded({required this.productId, required this.quantity});
 
   @override
   List<Object?> get props => [productId, quantity];
@@ -40,7 +37,8 @@ class CartItemQuantityUpdated extends CartEvent {
 class CartItemRemoved extends CartEvent {
   final String cartItemId;
 
-  const CartItemRemoved(this.cartItemId);
+  // SonarQube Fix: Updated to named parameters for strict consistency across all events
+  const CartItemRemoved({required this.cartItemId});
 
   @override
   List<Object?> get props => [cartItemId];
@@ -52,7 +50,5 @@ class CartCleared extends CartEvent {
 
 class CartResetLocal extends CartEvent {
   const CartResetLocal();
-
-  @override
-  List<Object> get props => [];
+  // SonarQube Fix: Removed the redundant props override since the base class already handles empty arrays
 }

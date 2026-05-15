@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
@@ -10,6 +12,16 @@ class ProductRepository {
 
   ProductRepository(this._apiClient);
 
+  String _extractErrorMessage(DioException e) {
+    if (e.response?.data != null && e.response?.data is Map<String, dynamic>) {
+      final responseData = e.response!.data as Map<String, dynamic>;
+      if (responseData['message'] != null) {
+        return responseData['message'].toString();
+      }
+    }
+    return e.message ?? 'An unknown network error occurred';
+  }
+
   Future<List<String>> getCategories() async {
     try {
       final response = await _apiClient.dio.get('/api/products/categories');
@@ -17,7 +29,7 @@ class ProductRepository {
       List<String> categories = ['All'];
 
       if (response.data is List) {
-        if (response.data.isNotEmpty && response.data[0] is String) {
+        if (response.data.isNotEmpty && response.data is String) {
           categories.addAll(List<String>.from(response.data));
         } else {
           final fetchedCategories = (response.data as List)
@@ -28,8 +40,17 @@ class ProductRepository {
       }
 
       return categories;
-    } catch (e) {
-      throw Exception('Failed to load categories: $e');
+    } on DioException catch (e) {
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      // SONARQUBE FIX: Consistent exception type and secure logging
+      developer.log(
+        'GetCategories error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProductRepository',
+      );
+      throw ServerException('Failed to load categories.');
     }
   }
 
@@ -54,20 +75,30 @@ class ProductRepository {
         queryParameters: queryParams,
       );
 
-      final data =
-          response.data['rows'] ?? response.data['products'] ?? response.data;
+      // Robust extraction for paginated wrappers
+      final dynamic rawData = response.data;
+      final data = rawData is Map
+          ? (rawData['rows'] ?? rawData['products'] ?? rawData)
+          : rawData;
 
       if (data is List) {
-        return data.map((json) => ProductModel.fromJson(json)).toList();
+        // Explicit cast to prevent dynamic type crashing
+        return data
+            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
+            .toList();
       } else {
         return [];
       }
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(e.message ?? 'Failed to fetch products');
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'GetProducts mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProductRepository',
+      );
+      throw ServerException('Failed to process products data.');
     }
   }
 
@@ -77,16 +108,19 @@ class ProductRepository {
         ApiEndpoints.productDetails(id),
       );
 
-      // Handle both { "product": {...} } wrapper and direct {...} object responses
-      final data = response.data['product'] ?? response.data;
-
+      final Map<String, dynamic> data =
+          response.data['product'] ?? response.data;
       return ProductModel.fromJson(data);
     } on DioException catch (e) {
-      throw e.error is Exception
-          ? e.error as Exception
-          : ServerException(e.message ?? 'Failed to fetch product details');
-    } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e));
+    } catch (e, stack) {
+      developer.log(
+        'GetProductById mapping error',
+        error: e,
+        stackTrace: stack,
+        name: 'ProductRepository',
+      );
+      throw ServerException('Failed to process product details.');
     }
   }
 }
